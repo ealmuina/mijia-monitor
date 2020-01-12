@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
+import numpy
 
 if __name__ == '__main__':
-    plt.figure(figsize=(9, 4.5))
+    fig = plt.figure(figsize=(9, 4.5))
     in_legend = set()
 
     times, t, h = [], [], []
@@ -16,4 +17,7 @@ if __name__ == '__main__':
     plt.plot(times, h, label='humidity')
 
     plt.legend()
+    plt.grid(b=True, which='major', color='#666666', linestyle='-')
+    plt.minorticks_on()
+    plt.grid(b=True, which='minor', color='#999999', linestyle='-', alpha=0.2)
     plt.show()
