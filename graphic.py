@@ -8,7 +8,7 @@ if __name__ == '__main__':
     with open('output.txt') as file:
         for line in file:
             l = line.split()
-            times.append(int(l[0]))
+            times.append(float(l[0]))
             t.append(float(l[1]))
             h.append(float(l[2]))
 
