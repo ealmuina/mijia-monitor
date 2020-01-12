@@ -1,23 +1,35 @@
-import matplotlib.pyplot as plt
-import numpy
+import datetime
 
-if __name__ == '__main__':
-    fig = plt.figure(figsize=(9, 4.5))
-    in_legend = set()
+import matplotlib.pyplot as plt
+
+
+def make_plot(timespan, temperature=True, humidity=True):
+    plt.figure(figsize=(9, 4.5))
 
     times, t, h = [], [], []
+    now = datetime.datetime.now()
     with open('output.txt') as file:
         for line in file:
             l = line.split()
-            times.append(float(l[0]))
-            t.append(float(l[1]))
-            h.append(float(l[2]))
+            timestamp, t_i, h_i = map(float, l)
+            if (now - datetime.datetime.fromtimestamp(float(l[0]))).seconds < timespan:
+                times.append(timestamp)
+                t.append(t_i)
+                h.append(h_i)
 
-    plt.plot(times, t, label='temperature')
-    plt.plot(times, h, label='humidity')
+    if temperature:
+        plt.plot(times, t, label='temperature')
+    if humidity:
+        plt.plot(times, h, label='humidity')
 
     plt.legend()
     plt.grid(b=True, which='major', color='#666666', linestyle='-')
     plt.minorticks_on()
     plt.grid(b=True, which='minor', color='#999999', linestyle='-', alpha=0.2)
-    plt.show()
+    plt.savefig('plot.png')
+
+
+if __name__ == '__main__':
+    make_plot(60 * 60 * 24)
+    make_plot(60 * 60 * 24, temperature=True, humidity=False)
+    make_plot(60 * 60 * 24, temperature=False, humidity=True)
