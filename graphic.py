@@ -5,7 +5,7 @@ if __name__ == '__main__':
     in_legend = set()
 
     times, t, h = [], [], []
-    with open('log.txt') as file:
+    with open('output.txt') as file:
         for line in file:
             l = line.split()
             times.append(int(l[0]))
