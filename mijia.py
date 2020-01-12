@@ -10,14 +10,17 @@ def main():
     poller = MiTempBtPoller(mac, BluepyBackend)
 
     while True:
-        try:
-            print(
-                time.time(),
-                poller.parameter_value(MI_TEMPERATURE, read_cached=False),
-                poller.parameter_value(MI_HUMIDITY, read_cached=False)
-            )
-        except BluetoothBackendException:
-            continue
+        with open('output.txt', 'a') as file:
+            try:
+                file.write(
+                    ' '.join((
+                        time.time(),
+                        poller.parameter_value(MI_TEMPERATURE, read_cached=False),
+                        poller.parameter_value(MI_HUMIDITY, read_cached=False)
+                    )) + '\n'
+                )
+            except BluetoothBackendException:
+                continue
         time.sleep(60)
 
 
