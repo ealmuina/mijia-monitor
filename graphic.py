@@ -12,8 +12,9 @@ def make_plot(timespan, temperature=True, humidity=True):
         for line in file:
             l = line.split()
             timestamp, t_i, h_i = map(float, l)
-            if (now - datetime.datetime.fromtimestamp(float(l[0]))).seconds < timespan:
-                times.append(timestamp)
+            current = datetime.datetime.fromtimestamp(timestamp)
+            if now - current <= timespan:
+                times.append(current)
                 t.append(t_i)
                 h.append(h_i)
 
@@ -30,6 +31,6 @@ def make_plot(timespan, temperature=True, humidity=True):
 
 
 if __name__ == '__main__':
-    make_plot(60 * 60 * 24)
-    make_plot(60 * 60 * 24, temperature=True, humidity=False)
-    make_plot(60 * 60 * 24, temperature=False, humidity=True)
+    make_plot(datetime.timedelta(days=1))
+    make_plot(datetime.timedelta(days=1), temperature=True, humidity=False)
+    make_plot(datetime.timedelta(days=1), temperature=False, humidity=True)

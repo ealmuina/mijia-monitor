@@ -1,3 +1,4 @@
+import datetime
 import json
 import logging
 
@@ -28,20 +29,19 @@ def authenticate(func):
 
 
 def _get_timespan(context):
-    day_seconds = 60 * 60 * 24
-    timespan = day_seconds * 30 * 365
+    timespan = datetime.timedelta(days=365)
     if context.args:
         timespan = context.args[0]
         if timespan == 'year':
-            timespan = day_seconds * 365
+            timespan = datetime.timedelta(days=365)
         elif timespan == 'month':
-            timespan = day_seconds * 30
+            timespan = datetime.timedelta(days=31)
         elif timespan == 'week':
-            timespan = day_seconds * 7
+            timespan = datetime.timedelta(days=7)
         elif timespan == 'day':
-            timespan = day_seconds
+            timespan = datetime.timedelta(days=1)
         elif timespan == 'hour':
-            timespan = day_seconds / 24
+            timespan = datetime.timedelta(hours=1)
     return timespan
 
 
