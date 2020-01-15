@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 
 def make_plot(timespan, temperature=True, humidity=True):
-    plt.figure(figsize=(9, 4.5))
+    plt.figure(figsize=(18, 9))
 
     times, t, h = [], [], []
     now = datetime.datetime.now()

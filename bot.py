@@ -2,9 +2,8 @@ import datetime
 import json
 import logging
 
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from telegram.ext import Updater, CommandHandler
 
-# Enable logging
 import graphic
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
