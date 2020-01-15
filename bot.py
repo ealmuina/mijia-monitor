@@ -48,21 +48,21 @@ def _get_timespan(context):
 def plot(update, context):
     timespan = _get_timespan(context)
     graphic.make_plot(timespan, temperature=True, humidity=True)
-    context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
+    context.bot.send_document(chat_id=update.message.chat_id, document=open('plot.png', 'rb'))
 
 
 @authenticate
 def temperature(update, context):
     timespan = _get_timespan(context)
     graphic.make_plot(timespan, temperature=True, humidity=False)
-    context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
+    context.bot.send_document(chat_id=update.message.chat_id, document=open('plot.png', 'rb'))
 
 
 @authenticate
 def humidity(update, context):
     timespan = _get_timespan(context)
     graphic.make_plot(timespan, temperature=False, humidity=True)
-    context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
+    context.bot.send_document(chat_id=update.message.chat_id, document=open('plot.png', 'rb'))
 
 
 def error(update, context):
