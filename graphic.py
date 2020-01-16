@@ -6,7 +6,7 @@ from model import Record
 
 
 def make_plot(timespan, temperature=True, humidity=True):
-    plt.figure(figsize=(10, 5.5))
+    plt.figure(figsize=(11, 5.5))
 
     start = datetime.datetime.now() - timespan
     records = Record.select().where(
