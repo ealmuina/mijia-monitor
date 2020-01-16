@@ -2,21 +2,22 @@ import datetime
 
 import matplotlib.pyplot as plt
 
+from model import Record
+
 
 def make_plot(timespan, temperature=True, humidity=True):
     plt.figure(figsize=(10, 5.5))
 
+    start = datetime.datetime.now() - timespan
+    records = Record.select().where(
+        Record.date >= start
+    )
+
     times, t, h = [], [], []
-    now = datetime.datetime.now()
-    with open('output.txt') as file:
-        for line in file:
-            l = line.split()
-            timestamp, t_i, h_i = map(float, l)
-            current = datetime.datetime.fromtimestamp(timestamp)
-            if now - current <= timespan:
-                times.append(current)
-                t.append(t_i)
-                h.append(h_i)
+    for r in records:
+        times.append(r.date)
+        t.append(r.temperature)
+        h.append(r.humidity)
 
     if temperature:
         plt.plot(times, t, label='temperature')
