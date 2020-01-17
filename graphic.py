@@ -20,9 +20,9 @@ def make_plot(timespan, temperature=True, humidity=True):
         h.append(r.humidity)
 
     if temperature:
-        plt.plot(times, t, label='temperature')
+        plt.plot(times, t, label='temperature', color='C1')
     if humidity:
-        plt.plot(times, h, label='humidity')
+        plt.plot(times, h, label='humidity', color='C0')
 
     plt.legend()
     plt.grid(b=True, which='major', color='#666666', linestyle='-')
