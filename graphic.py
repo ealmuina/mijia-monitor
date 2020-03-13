@@ -20,7 +20,7 @@ def make_plt(start, location, temperature, humidity, single=True, i=0):
         h.append(r.humidity)
 
     if temperature:
-        plt.plot(times, t, label='temperature' + '' if single else f' {location.name}', color=cm.colors[3 + i])
+        plt.plot(times, t, label='temperature' + '' if single else f' {location.name}', color=cm.colors[4 + i])
     if humidity:
         plt.plot(times, h, label='humidity' + '' if single else f' {location.name}', color=cm.colors[i])
 
