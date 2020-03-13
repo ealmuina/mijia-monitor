@@ -5,6 +5,7 @@ import logging
 from telegram.ext import Updater, CommandHandler
 
 import graphic
+from model import Location
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -47,22 +48,25 @@ def _get_timespan(context):
 @authenticate
 def plot(update, context):
     timespan = _get_timespan(context)
-    graphic.make_plot(timespan, temperature=True, humidity=True)
-    context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
+    for location in Location.select():
+        graphic.make_plot(timespan, location, temperature=True, humidity=True)
+        context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
 
 
 @authenticate
 def temperature(update, context):
     timespan = _get_timespan(context)
-    graphic.make_plot(timespan, temperature=True, humidity=False)
-    context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
+    for location in Location.select():
+        graphic.make_plot(timespan, location, temperature=True, humidity=False)
+        context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
 
 
 @authenticate
 def humidity(update, context):
     timespan = _get_timespan(context)
-    graphic.make_plot(timespan, temperature=False, humidity=True)
-    context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
+    for location in Location.select():
+        graphic.make_plot(timespan, location, temperature=False, humidity=True)
+        context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
 
 
 def error(update, context):
