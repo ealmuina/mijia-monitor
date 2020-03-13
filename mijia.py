@@ -1,13 +1,13 @@
 import datetime
 import json
-import threading
+import multiprocessing
 import time
 
 from btlewrap import BluepyBackend
 from btlewrap.base import BluetoothBackendException
 
 from mitemp_bt.mitemp_bt_poller import MiTempBtPoller, MI_TEMPERATURE, MI_HUMIDITY
-from model import Record
+from model import Record, Location
 
 
 def monitor(mac, location):
@@ -23,11 +23,11 @@ def monitor(mac, location):
                 date=datetime.datetime.now(),
                 location=location
             ).save()
-            print(t, h)
-        except BluetoothBackendException:
-            print('error')
+            print(location.name, t, h)
+        except BluetoothBackendException as e:
+            print(location.name, 'error')
             continue
-        time.sleep(5)
+        time.sleep(60)
 
 
 def main():
@@ -35,8 +35,8 @@ def main():
         config = json.load(config)
         for sensor in config['sensors']:
             mac = sensor['mac']
-            location = sensor['location']
-            threading.Thread(target=monitor, args=(mac, location)).start()
+            location = Location.get(name=sensor['location'])
+            multiprocessing.Process(target=monitor, args=(mac, location)).start()
 
 
 if __name__ == '__main__':
