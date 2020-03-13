@@ -49,24 +49,30 @@ def _get_timespan(context):
 def plot(update, context):
     timespan = _get_timespan(context)
     for location in Location.select():
-        graphic.make_plot(timespan, location, temperature=True, humidity=True)
+        graphic.single_plot(timespan, location, temperature=True, humidity=True)
         context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
+    graphic.multiple_plot(timespan, Location.select(), temperature=True, humidity=True)
+    context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
 
 
 @authenticate
 def temperature(update, context):
     timespan = _get_timespan(context)
     for location in Location.select():
-        graphic.make_plot(timespan, location, temperature=True, humidity=False)
+        graphic.single_plot(timespan, location, temperature=True, humidity=False)
         context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
+    graphic.multiple_plot(timespan, Location.select(), temperature=True, humidity=False)
+    context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
 
 
 @authenticate
 def humidity(update, context):
     timespan = _get_timespan(context)
     for location in Location.select():
-        graphic.make_plot(timespan, location, temperature=False, humidity=True)
+        graphic.single_plot(timespan, location, temperature=False, humidity=True)
         context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
+    graphic.multiple_plot(timespan, Location.select(), temperature=False, humidity=True)
+    context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
 
 
 def error(update, context):
