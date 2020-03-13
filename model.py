@@ -1,42 +1,58 @@
 import datetime
 
+import tqdm
 from peewee import *
 
 db = SqliteDatabase('db.sqlite3')
+
+
+class Location(Model):
+    name = CharField()
+    outdoor = BooleanField()
+
+    class Meta:
+        database = db
 
 
 class Record(Model):
     temperature = FloatField()
     humidity = FloatField()
     date = DateTimeField(index=True)
-    location = CharField()
+    location = ForeignKeyField(Location)
 
     class Meta:
         database = db
 
 
-db.connect()
-if not db.table_exists('Record'):
-    db.create_tables([Record])
-db.close()
+try:
+    db.create_tables([Location, Record])
+except Exception as e:
+    pass
 
 
-def migrate():
+def main():
+    living_room0 = Location.create(name='living_room0', outdoor=True)
+    bedroom0 = Location.create(name='bedroom0', outdoor=False)
+
     with open('output.txt') as file:
+        lines = file.readlines()
         counter = 0
-        for line in file:
+        records = []
+        for line in tqdm.tqdm(lines):
             l = line.split()
             timestamp, t_i, h_i = map(float, l)
-            Record(
-                temperature=t_i,
-                humidity=h_i,
-                date=datetime.datetime.fromtimestamp(timestamp),
-                location="bedroom0"
-            ).save()
-            print(timestamp, t_i, h_i)
+            records.append({
+                'temperature': t_i,
+                'humidity': h_i,
+                'date': datetime.datetime.fromtimestamp(timestamp),
+                'location': bedroom0
+            })
             counter += 1
-        print(f'{counter} records migrated.')
+            if counter > 1000:
+                Record.insert_many(records).execute()
+                counter = 0
+                records = []
 
 
 if __name__ == '__main__':
-    migrate()
+    main()
