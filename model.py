@@ -52,6 +52,8 @@ def main():
                 Record.insert_many(records).execute()
                 counter = 0
                 records = []
+    if counter:
+        Record.insert_many(records).execute()
 
 
 if __name__ == '__main__':
