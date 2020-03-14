@@ -33,7 +33,11 @@ def monitor(mac, location):
 
 def get_battery(mac):
     poller = MiTempBtPoller(mac, BluepyBackend)
-    return poller.battery_level()
+    while True:
+        try:
+            return poller.battery_level()
+        except BluetoothBackendException:
+            continue
 
 
 def main():
