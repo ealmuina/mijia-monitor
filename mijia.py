@@ -17,17 +17,23 @@ def monitor(mac, location):
         try:
             t = poller.parameter_value(MI_TEMPERATURE, read_cached=False)
             h = poller.parameter_value(MI_HUMIDITY, read_cached=False)
+            b = poller.battery_level()
             Record(
                 temperature=t,
                 humidity=h,
                 date=datetime.datetime.now(),
                 location=location
             ).save()
-            print(location.name, t, h)
-        except BluetoothBackendException as e:
+            print(location.name, t, h, b)
+        except BluetoothBackendException:
             print(location.name, 'error')
             continue
         time.sleep(60)
+
+
+def get_battery(mac):
+    poller = MiTempBtPoller(mac, BluepyBackend)
+    return poller.battery_level()
 
 
 def main():

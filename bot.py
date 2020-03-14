@@ -5,6 +5,7 @@ import logging
 from telegram.ext import Updater, CommandHandler
 
 import graphic
+from mijia import get_battery
 from model import Location
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -75,6 +76,16 @@ def humidity(update, context):
     context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
 
 
+@authenticate
+def battery(update, context):
+    with open('config.json') as config:
+        config = json.load(config)
+        for sensor in config['sensors']:
+            mac = sensor['mac']
+            b = get_battery(mac)
+            update.message.reply_text(f'{sensor["location"]}: {b}%')
+
+
 def error(update, context):
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, context.error)
@@ -94,6 +105,7 @@ def main():
     dp.add_handler(CommandHandler("plot", plot))
     dp.add_handler(CommandHandler("temperature", temperature))
     dp.add_handler(CommandHandler("humidity", humidity))
+    dp.add_handler(CommandHandler("battery", battery))
 
     # log all errors
     dp.add_error_handler(error)
