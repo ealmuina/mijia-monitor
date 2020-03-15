@@ -11,20 +11,18 @@ from model import Record, Location
 
 
 def monitor(mac, location):
-    poller = MiTempBtPoller(mac, BluepyBackend)
-
     while True:
         try:
+            poller = MiTempBtPoller(mac, BluepyBackend)
             t = poller.parameter_value(MI_TEMPERATURE, read_cached=False)
             h = poller.parameter_value(MI_HUMIDITY, read_cached=False)
-            b = poller.battery_level()
             Record(
                 temperature=t,
                 humidity=h,
                 date=datetime.datetime.now(),
                 location=location
             ).save()
-            print(location.name, t, h, b)
+            print(location.name, t, h)
         except BluetoothBackendException:
             print(location.name, 'error')
             continue
