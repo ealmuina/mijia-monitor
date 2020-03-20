@@ -24,7 +24,7 @@ def monitor(mac, location):
             ).save()
             print(location.name, t, h)
         except BluetoothBackendException:
-            print(location.name, 'error')
+            print(datetime.datetime.now(), location.name, 'error')
             continue
         time.sleep(60)
 
