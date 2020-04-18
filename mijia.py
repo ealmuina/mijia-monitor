@@ -49,9 +49,18 @@ def main():
     ]
 
     while True:
+        daemons = []
+
         for s in sensors:
-            multiprocessing.Process(target=poll_sensor, args=s).start()
+            p = multiprocessing.Process(target=poll_sensor, args=s)
+            daemons.append(p)
+            p.start()
+
         time.sleep(60)
+
+        for p in daemons:
+            if p.is_alive():
+                p.kill()
 
 
 if __name__ == '__main__':
