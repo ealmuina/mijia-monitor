@@ -10,8 +10,9 @@ from mitemp_bt.mitemp_bt_poller import MiTempBtPoller, MI_TEMPERATURE, MI_HUMIDI
 from model import Record, Location
 
 
-def monitor(mac, location):
-    while True:
+def poll_sensor(mac, location):
+    attempts = 0
+    while attempts < 5:
         try:
             poller = MiTempBtPoller(mac, BluepyBackend)
             t = poller.parameter_value(MI_TEMPERATURE, read_cached=False)
@@ -23,11 +24,11 @@ def monitor(mac, location):
                 location=location
             ).save()
             print(location.name, t, h)
+            break
         except BluetoothBackendException:
             print(datetime.datetime.now(), location.name, 'error')
             time.sleep(10)
-            continue
-        time.sleep(60)
+            attempts += 1
 
 
 def get_battery(mac):
@@ -42,10 +43,15 @@ def get_battery(mac):
 def main():
     with open('config.json') as config:
         config = json.load(config)
-        for sensor in config['sensors']:
-            mac = sensor['mac']
-            location = Location.get(name=sensor['location'])
-            multiprocessing.Process(target=monitor, args=(mac, location)).start()
+
+    sensors = [
+        (s['mac'], Location.get(name=s['location'])) for s in config['sensors']
+    ]
+
+    while True:
+        for s in sensors:
+            multiprocessing.Process(target=poll_sensor, args=s).start()
+        time.sleep(60)
 
 
 if __name__ == '__main__':
