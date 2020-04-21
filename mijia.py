@@ -60,7 +60,8 @@ def main():
 
         for p in daemons:
             if p.is_alive():
-                p.kill()
+                p.terminate()
+                p.join()
 
 
 if __name__ == '__main__':
