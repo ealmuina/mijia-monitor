@@ -11,7 +11,7 @@ def make_plt(start, location, temperature, humidity, single=True, i=0):
     records = Record.select().where(
         Record.date >= start,
         Record.location == location
-    )
+    ).order_by(Record.date)
 
     times, t, h = [], [], []
     for r in records:
