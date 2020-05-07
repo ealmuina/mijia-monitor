@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 
 def main():
-    with open('madrid_15_19.json') as file:
+    with open('madrid_75_19.json') as file:
         data = json.load(file)
 
     register = {}
@@ -21,7 +21,7 @@ def main():
         register[date] = values
 
     mean = {}
-    for date, values in register.items():
+    for date, values in sorted(register.items()):
         mean[date] = (
             sum(map(lambda x: x[0], values)) / len(values),
             sum(map(lambda x: x[1], values)) / len(values)

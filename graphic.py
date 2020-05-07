@@ -32,8 +32,8 @@ def make_plt(start, location, temperature, humidity, single=True, i=0):
             date = '%02d-%02d' % (t.month, t.day)
             tmax.append(mean_temps[date][0])
             tmin.append(mean_temps[date][1])
-        plt.plot(times, tmax, label='max_temperature 2015-2019', color='Red')
-        plt.plot(times, tmin, label='min_temperature 2015-2019', color='Blue')
+        plt.plot(times, tmax, label='max_temperature 1975-2019', color='Red')
+        plt.plot(times, tmin, label='min_temperature 1975-2019', color='Blue')
 
 
 def single_plot(timespan, location, temperature=True, humidity=True):
