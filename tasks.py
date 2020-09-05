@@ -33,8 +33,9 @@ def poll_sensor(mac, location_id):
 @app.task
 def get_battery(mac):
     poller = MiTempBtPoller(mac, BluepyBackend)
-    while True:
+    for _ in range(100):
         try:
             return poller.battery_level()
         except BluetoothBackendException:
             continue
+    return 0
