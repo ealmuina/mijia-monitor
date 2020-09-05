@@ -10,7 +10,7 @@ from model import Record
 app = Celery('tasks', backend='rpc://', broker='pyamqp://guest@localhost//')
 
 
-@app.task
+@app.task(ignore_result=True)
 def poll_sensor(mac, location_id):
     attempts = 0
     while attempts < 5:
