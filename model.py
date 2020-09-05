@@ -3,7 +3,7 @@ import datetime
 import tqdm
 from peewee import *
 
-db = SqliteDatabase('db.sqlite3')
+db = SqliteDatabase('mijia.db')
 
 
 class Location(Model):

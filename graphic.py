@@ -25,7 +25,7 @@ def make_plt(start, location, temperature, humidity, single=True, i=0):
     if humidity:
         plt.plot(times, h, label='humidity' + ('' if single else f' {location.name}'), color=cm.colors[i])
     elif location.outdoor:
-        with open('mean_temps.bin', 'rb') as file:
+        with open('utils/mean_temps.bin', 'rb') as file:
             mean_temps = pickle.load(file)
         tmax, tmin = [], []
         for t in times:

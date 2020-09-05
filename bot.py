@@ -5,8 +5,8 @@ import logging
 from telegram.ext import Updater, CommandHandler
 
 import graphic
-from mijia import get_battery
 from model import Location
+from tasks import get_battery
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -82,7 +82,7 @@ def battery(update, context):
         config = json.load(config)
         for sensor in config['sensors']:
             mac = sensor['mac']
-            b = get_battery(mac)
+            b = get_battery.delay(mac).get()
             update.message.reply_text(f'{sensor["location"]}: {b}%')
 
 
