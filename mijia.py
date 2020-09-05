@@ -15,7 +15,7 @@ def main():
 
     while True:
         for mac, location in sensors:
-            poll_sensor.delay(mac, location)
+            poll_sensor.delay(mac, location.id)
         time.sleep(60)
 
 

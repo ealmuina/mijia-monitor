@@ -11,7 +11,7 @@ app = Celery('tasks', broker='pyamqp://eddy@localhost//')
 
 
 @app.task
-def poll_sensor(mac, location):
+def poll_sensor(mac, location_id):
     attempts = 0
     while attempts < 5:
         try:
@@ -22,12 +22,10 @@ def poll_sensor(mac, location):
                 temperature=t,
                 humidity=h,
                 date=datetime.datetime.now(),
-                location=location
+                location=location_id
             ).save()
-            print(location.name, t, h)
             break
         except BluetoothBackendException:
-            print(datetime.datetime.now(), location.name, 'error')
             time.sleep(10)
             attempts += 1
 
