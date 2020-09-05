@@ -7,7 +7,7 @@ from celery import Celery
 from mitemp_bt.mitemp_bt_poller import MiTempBtPoller, MI_TEMPERATURE, MI_HUMIDITY
 from model import Record
 
-app = Celery('tasks', broker='pyamqp://guest@localhost//')
+app = Celery('tasks', backend='rpc://', broker='pyamqp://guest@localhost//')
 
 
 @app.task
