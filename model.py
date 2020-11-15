@@ -1,6 +1,3 @@
-import datetime
-
-import tqdm
 from peewee import *
 
 db = SqliteDatabase('mijia.db')
@@ -24,37 +21,17 @@ class Record(Model):
         database = db
 
 
-try:
-    db.create_tables([Location, Record])
-except Exception as e:
-    pass
+class Statistics(Model):
+    date = DateField(index=True)
+    temperature_max = FloatField()
+    temperature_avg = FloatField()
+    temperature_min = FloatField()
+    time_max = TimeField()
+    time_min = TimeField()
+
+    class Meta:
+        database = db
 
 
-def main():
-    living_room0 = Location.create(name='living_room0', outdoor=True)
-    bedroom0 = Location.create(name='bedroom0', outdoor=False)
-
-    with open('output.txt') as file:
-        lines = file.readlines()
-        counter = 0
-        records = []
-        for line in tqdm.tqdm(lines):
-            l = line.split()
-            timestamp, t_i, h_i = map(float, l)
-            records.append({
-                'temperature': t_i,
-                'humidity': h_i,
-                'date': datetime.datetime.fromtimestamp(timestamp),
-                'location': bedroom0
-            })
-            counter += 1
-            if counter > 1000:
-                Record.insert_many(records).execute()
-                counter = 0
-                records = []
-    if counter:
-        Record.insert_many(records).execute()
-
-
-if __name__ == '__main__':
-    main()
+for table in (Location, Record, Statistics):
+    table.create_table()
