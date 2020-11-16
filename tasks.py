@@ -109,7 +109,7 @@ def send_daily_statistics():
         # Send week summary
         _send_statistics(
             channel=channel,
-            period=f'week #{yesterday.isocalendar()[1]}',
+            period=f'WEEK #{yesterday.isocalendar()[1]}',
             statistics=Statistics.select().where(
                 Statistics.date >= yesterday - datetime.timedelta(days=6),
                 Statistics.date <= yesterday
