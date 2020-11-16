@@ -4,6 +4,7 @@ import logging
 import threading
 
 import pika
+import telegram
 from telegram.ext import Updater, CommandHandler
 
 import graphic
@@ -26,7 +27,8 @@ def _send_notification(ch, method, props, body):
             logger.info('Sending notification to %d', user_id)
             BOT.send_message(
                 chat_id=user_id,
-                text=notification['text']
+                text=notification['text'],
+                parse_mode=telegram.ParseMode.MARKDOWN
             )
     except Exception as e:
         logger.error(e)

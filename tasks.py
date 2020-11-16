@@ -103,7 +103,7 @@ def send_daily_statistics():
     ))
     channel = connection.channel()
     channel.basic_qos(prefetch_count=1)
-    _send_statistics(channel, yesterday, Statistics.select().where(Statistics.date == yesterday.date()))
+    _send_statistics(channel, yesterday.date(), Statistics.select().where(Statistics.date == yesterday.date()))
 
     if yesterday.weekday() == 6:
         # Send week summary
@@ -153,14 +153,16 @@ def _send_statistics(channel, period, statistics):
         if not s_max_min or s.temperature_min > s_max_min.temperature_min:
             s_max_min = s
 
-    message = f"STATISTICS FOR {period}:\n" \
-              f"- Max temp:         {s_max.temperature_max}ºC ({datetime.datetime.combine(s_max.date, s_max.time_max)})\n"
+    message = f"*STATISTICS FOR {period}:*\n"
 
     if statistics.count() > 1:
-        message += f"- Lowest max temp:  {s_min_max.temperature_max}ºC ({datetime.datetime.combine(s_min_max.date, s_min_max.time_max)}\n" \
-                   f"- Highest min temp: {s_max_min.temperature_min}ºC ({datetime.datetime.combine(s_max_min.date, s_max_min.time_min)}\n"
-
-    message += f"- Min temp:         {s_min.temperature_min}ºC ({datetime.datetime.combine(s_min.date, s_min.time_min)})"
+        message += f"- Max temp: *{s_max.temperature_max}ºC* [{datetime.datetime.combine(s_max.date, s_max.time_max).strftime('%Y-%m-%d %H:%M:%S')}]\n" \
+                   f"- Lowest max temp: *{s_min_max.temperature_max}ºC* [{datetime.datetime.combine(s_min_max.date, s_min_max.time_max).strftime('%Y-%m-%d %H:%M:%S')}]\n" \
+                   f"- Highest min temp: *{s_max_min.temperature_min}ºC* [{datetime.datetime.combine(s_max_min.date, s_max_min.time_min).strftime('%Y-%m-%d %H:%M:%S')}]\n" \
+                   f"- Min temp: *{s_min.temperature_min}ºC* [{datetime.datetime.combine(s_min.date, s_min.time_min)}]"
+    else:
+        message += f"- Max temp: *{s_max.temperature_max}ºC* [{s_max.time_max.strftime('%H:%M:%S')}]\n" \
+                   f"- Min temp: *{s_min.temperature_min}ºC* [{s_min.time_min.strftime('%H:%M:%S')}]"
 
     channel.basic_publish(
         exchange='',
