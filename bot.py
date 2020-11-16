@@ -28,7 +28,7 @@ def _send_notification(ch, method, props, body):
             BOT.send_message(
                 chat_id=user_id,
                 text=notification['text'],
-                parse_mode=telegram.ParseMode.MARKDOWN
+                parse_mode=telegram.ParseMode.HTML
             )
     except Exception as e:
         logger.error(e)

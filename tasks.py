@@ -153,7 +153,7 @@ def _send_statistics(channel, period, statistics):
         if not s_max_min or s.temperature_min > s_max_min.temperature_min:
             s_max_min = s
 
-    message = f"*STATISTICS FOR {period}:*\n"
+    message = f"<b>STATISTICS FOR {period}:</b>\n"
 
     if statistics.count() > 1:
         message += f"- Max temp: *{s_max.temperature_max}ºC* [{datetime.datetime.combine(s_max.date, s_max.time_max).strftime('%Y-%m-%d %H:%M:%S')}]\n" \
