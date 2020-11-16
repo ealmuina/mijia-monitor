@@ -25,7 +25,7 @@ def _send_notification(ch, method, props, body):
     try:
         for user_id in CONFIG['whitelist']:
             BOT.send_message(
-                chat_id=user_id,
+                user_id=user_id,
                 text=notification['text']
             )
     except Exception as e:
