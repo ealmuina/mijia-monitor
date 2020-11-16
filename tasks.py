@@ -1,6 +1,9 @@
+import calendar
 import datetime
+import json
 import time
 
+import pika
 import tqdm
 from btlewrap import BluepyBackend, BluetoothBackendException
 from celery import Celery
@@ -11,6 +14,9 @@ from mitemp_bt.mitemp_bt_poller import MiTempBtPoller, MI_TEMPERATURE, MI_HUMIDI
 from model import Record, Statistics, Location
 
 app = Celery('tasks', backend='rpc://', broker='pyamqp://guest@localhost//')
+
+with open('config.json') as file:
+    CONFIG = json.load(file)
 
 app.conf.beat_schedule = {
     # Executes daily at midnight.
@@ -83,3 +89,86 @@ def generate_statistics():
                 time_max=record_max.date.time(),
                 time_min=record_min.date.time()
             ).save()
+
+    send_daily_statistics()
+
+
+def send_daily_statistics():
+    today = datetime.datetime.today()
+    yesterday = today - datetime.timedelta(days=1)
+
+    connection = pika.BlockingConnection(pika.ConnectionParameters(
+        host=CONFIG['rabbitmq-host'],
+        credentials=pika.PlainCredentials(CONFIG['rabbitmq-user'], CONFIG['rabbitmq-password'])
+    ))
+    channel = connection.channel()
+    channel.basic_qos(prefetch_count=1)
+    _send_statistics(channel, yesterday, Statistics.select().where(Statistics.date == yesterday.date()))
+
+    if yesterday.weekday() == 6:
+        # Send week summary
+        _send_statistics(
+            channel=channel,
+            period=f'week #{yesterday.isocalendar()[1]}',
+            statistics=Statistics.select().where(
+                Statistics.date >= yesterday - datetime.timedelta(days=6),
+                Statistics.date <= yesterday
+            )
+        )
+
+    if yesterday.month != today.month:
+        # Send month summary
+        _send_statistics(
+            channel=channel,
+            period=calendar.month_name[yesterday.month],
+            statistics=Statistics.select().where(
+                Statistics.date >= datetime.date(year=yesterday.year, month=yesterday.month, day=1),
+                Statistics.date <= yesterday
+            )
+        )
+
+    if yesterday.year != today.year:
+        # Send year summary
+        _send_statistics(
+            channel=channel,
+            period=yesterday.year,
+            statistics=Statistics.select().where(
+                Statistics.date >= datetime.date(year=yesterday.year, month=1, day=1),
+                Statistics.date <= yesterday
+            )
+        )
+
+    connection.close()
+
+
+def _send_statistics(channel, period, statistics):
+    s_max, s_min, s_min_max, s_max_min = None, None, None, None
+    for s in statistics:
+        if not s_max or s.temperature_max > s_max.temperature_max:
+            s_max = s
+        if not s_min or s.temperature_min < s_min.temperature_min:
+            s_min = s
+        if not s_min_max or s.temperature_max < s_min_max.temperature_max:
+            s_min_max = s
+        if not s_max_min or s.temperature_min > s_max_min.temperature_min:
+            s_max_min = s
+
+    message = f"STATISTICS FOR {period}:\n" \
+              f"- Max temp:         {s_max.temperature_max}ºC ({datetime.datetime.combine(s_max.date, s_max.time_max)})\n"
+
+    if statistics.count() > 1:
+        message += f"- Lowest max temp:  {s_min_max.temperature_max}ºC ({datetime.datetime.combine(s_min_max.date, s_min_max.time_max)}\n" \
+                   f"- Highest min temp: {s_max_min.temperature_min}ºC ({datetime.datetime.combine(s_max_min.date, s_max_min.time_min)}\n"
+
+    message += f"- Min temp:         {s_min.temperature_min}ºC ({datetime.datetime.combine(s_min.date, s_min.time_min)})"
+
+    channel.basic_publish(
+        exchange='',
+        routing_key='mijia-notify',
+        properties=pika.BasicProperties(
+            content_type='application/json'
+        ),
+        body=json.dumps({
+            'text': message
+        })
+    )

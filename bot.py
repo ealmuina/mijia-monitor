@@ -1,7 +1,9 @@
 import datetime
 import json
 import logging
+import threading
 
+import pika
 from telegram.ext import Updater, CommandHandler
 
 import graphic
@@ -15,6 +17,43 @@ logger = logging.getLogger(__name__)
 
 with open('config.json') as file:
     CONFIG = json.load(file)
+
+
+def _send_notification(ch, method, props, body):
+    notification = json.loads(body)
+    logger.info('Sending notification to %d', notification['user_id'])
+    try:
+        for user_id in CONFIG['whitelist']:
+            BOT.send_message(
+                chat_id=user_id,
+                text=notification['text']
+            )
+    except Exception as e:
+        logger.error(e)
+
+
+def listen_notifications():
+    # Setup rabbitmq
+    connection = pika.BlockingConnection(pika.ConnectionParameters(
+        host=CONFIG['rabbitmq-host'],
+        credentials=pika.PlainCredentials(CONFIG['rabbitmq-user'], CONFIG['rabbitmq-password'])
+    ))
+    channel = connection.channel()
+    channel.basic_qos(prefetch_count=1)
+    result = channel.queue_declare(queue='mijia-notify', durable=True)
+    queue = result.method.queue
+    channel.basic_consume(
+        queue=queue,
+        on_message_callback=_send_notification,
+        auto_ack=True
+    )
+    try:
+        channel.start_consuming()
+    except KeyboardInterrupt:
+        channel.stop_consuming()
+    except Exception as e:
+        logger.error(e)
+    connection.close()
 
 
 def authenticate(func):
@@ -111,10 +150,18 @@ def main():
     # Start the Bot
     updater.start_polling()
 
+    global BOT
+    BOT = updater.bot
+
+    listener = threading.Thread(target=listen_notifications)
+    listener.start()
+
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT. This should be used most of the time, since
     # start_polling() is non-blocking and will stop the bot gracefully.
     updater.idle()
+
+    listener.join()
 
 
 if __name__ == '__main__':
