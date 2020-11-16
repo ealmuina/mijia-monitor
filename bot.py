@@ -21,11 +21,11 @@ with open('config.json') as file:
 
 def _send_notification(ch, method, props, body):
     notification = json.loads(body)
-    logger.info('Sending notification to %d', notification['user_id'])
     try:
         for user_id in CONFIG['whitelist']:
+            logger.info('Sending notification to %d', user_id)
             BOT.send_message(
-                user_id=user_id,
+                chat_id=user_id,
                 text=notification['text']
             )
     except Exception as e:
