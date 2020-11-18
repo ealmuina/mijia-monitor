@@ -25,6 +25,7 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour=0, minute=5)
     },
 }
+app.conf.timezone = 'Europe/Madrid'
 
 
 @app.task(ignore_result=True)
