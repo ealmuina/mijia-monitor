@@ -3,7 +3,9 @@ import datetime
 import json
 import time
 
+import arrow
 import pika
+import requests
 import tqdm
 from btlewrap import BluepyBackend, BluetoothBackendException
 from celery import Celery
@@ -24,6 +26,10 @@ app.conf.beat_schedule = {
         'task': 'tasks.generate_statistics',
         'schedule': crontab(hour=0, minute=5)
     },
+    'poll-aemet': {
+        'task': 'tasks.poll_aemet',
+        'schedule': crontab(minute=30)
+    }
 }
 app.conf.timezone = 'Europe/Madrid'
 
@@ -48,6 +54,28 @@ def poll_sensor(mac, location_id):
             attempts += 1
 
 
+@app.task(ignore_result=True)
+def poll_aemet():
+    attempts = 0
+    while attempts < 5:
+        try:
+            r = requests.get('https://opendata.aemet.es/opendata/api/observacion/convencional/datos/estacion/3195/', params={'api_key': CONFIG['aemet_api_key']})
+            data_url = r.json().get('datos')
+            r = requests.get(data_url)
+            for record in r.json():
+                Record.get_or_create(
+                    date=arrow.get(record['fint']).datetime,
+                    defaults={
+                        'pressure': record['pres'],
+                        'temperature': record['ta'],
+                        'humidity': record['hr']
+                    }
+                )
+        except Exception:
+            time.sleep(60)
+            attempts += 1
+
+
 @app.task
 def get_battery(mac):
     poller = MiTempBtPoller(mac, BluepyBackend)
@@ -61,7 +89,7 @@ def get_battery(mac):
 
 @app.task(ignore_result=True)
 def generate_statistics():
-    record_qs = Record.select().join(Location).where(Location.outdoor == True)
+    record_qs = Record.select().join(Location).where(Location.outdoor == True, Location.remote == False)
 
     start = record_qs.order_by(Record.date).first().date
     start = start.replace(hour=0, minute=0, second=0, microsecond=0)

@@ -6,6 +6,7 @@ db = SqliteDatabase('mijia.db')
 class Location(Model):
     name = CharField()
     outdoor = BooleanField()
+    remote = BooleanField(default=False)
 
     class Meta:
         database = db
@@ -14,6 +15,7 @@ class Location(Model):
 class Record(Model):
     temperature = FloatField()
     humidity = FloatField()
+    pressure = FloatField(null=True)
     date = DateTimeField(index=True)
     location = ForeignKeyField(Location)
 
