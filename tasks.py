@@ -59,12 +59,14 @@ def poll_aemet():
     attempts = 0
     while attempts < 5:
         try:
+            amet_location = Location.get(Location.name == 'aemet')
             r = requests.get('https://opendata.aemet.es/opendata/api/observacion/convencional/datos/estacion/3195/', params={'api_key': CONFIG['aemet_api_key']})
             data_url = r.json().get('datos')
             r = requests.get(data_url)
             for record in r.json():
                 Record.get_or_create(
                     date=arrow.get(record['fint']).datetime,
+                    location=amet_location,
                     defaults={
                         'pressure': record['pres'],
                         'temperature': record['ta'],
