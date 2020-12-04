@@ -15,6 +15,13 @@ from dateutil.rrule import rrule, DAILY
 from mitemp_bt.mitemp_bt_poller import MiTempBtPoller, MI_TEMPERATURE, MI_HUMIDITY
 from model import Record, Statistics, Location
 
+requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += ':HIGH:!DH:!aNULL'
+try:
+    requests.packages.urllib3.contrib.pyopenssl.DEFAULT_SSL_CIPHER_LIST += ':HIGH:!DH:!aNULL'
+except AttributeError:
+    # no pyopenssl support used / needed / available
+    pass
+
 app = Celery('tasks', backend='rpc://', broker='pyamqp://guest@localhost//')
 
 with open('config.json') as file:
@@ -73,6 +80,7 @@ def poll_aemet():
                         'humidity': record['hr']
                     }
                 )
+            break
         except Exception:
             time.sleep(60)
             attempts += 1
