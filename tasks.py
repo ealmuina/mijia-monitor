@@ -72,7 +72,7 @@ def poll_aemet():
             r = requests.get(data_url)
             for record in r.json():
                 Record.get_or_create(
-                    date=arrow.get(record['fint']).datetime,
+                    date=arrow.get(record['fint']).datetime.replace(tzinfo=None),
                     location=amet_location,
                     defaults={
                         'pressure': record['pres'],
