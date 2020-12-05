@@ -35,7 +35,7 @@ app.conf.beat_schedule = {
     },
     'poll-aemet': {
         'task': 'tasks.poll_aemet',
-        'schedule': crontab(minute=30)
+        'schedule': crontab(minute=50)
     }
 }
 app.conf.timezone = 'Europe/Madrid'
