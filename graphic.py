@@ -40,7 +40,7 @@ def single_plot(timespan, location, temperature=True, humidity=True):
     plt.figure(figsize=(11, 5.5))
 
     start = datetime.datetime.now() - timespan
-    make_plt(start, location, temperature, humidity, historical_lines=True)
+    make_plt(start, location, temperature, humidity, historical_lines=location.outdoor)
 
     plt.title(location.name)
     plt.legend()
