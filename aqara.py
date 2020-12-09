@@ -35,9 +35,9 @@ class AqaraPoller:
             location=self.location.id,
             defaults=data
         )
-        if not created:
-            for indicator, value in data:
-                setattr(record, indicator, value)
+        record.temperature = data['temperature']
+        record.humidity = data['humidity']
+        record.pressure = data['pressure']
         record.save()
 
     def loop_start(self):
