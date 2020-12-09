@@ -99,7 +99,8 @@ def get_battery(mac):
 
 @app.task(ignore_result=True)
 def generate_statistics():
-    record_qs = Record.select().join(Location).where(Location.outdoor == True, Location.remote == False)
+    locations = Location.select().where(Location.outdoor == True, Location.remote == False)
+    record_qs = Record.select().where(Record.location.in_(locations))
 
     start = record_qs.order_by(Record.date).first().date
     start = start.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -108,23 +109,36 @@ def generate_statistics():
 
     for d in tqdm.tqdm(date_range):
         if not Statistics.select().where(Statistics.date == d.date()).exists():
-            records = record_qs.where(
-                Record.date >= d,
-                Record.date < d + datetime.timedelta(days=1)
-            )
-
             record_max, record_min = None, None
-            for r in records:
-                if not record_max or r.temperature > record_max.temperature:
-                    record_max = r
-                if not record_min or r.temperature < record_min.temperature:
-                    record_min = r
+            temperature_avg = 10000
+
+            for location in locations:
+                location_record_max, location_record_min = None, None
+
+                records = record_qs.where(
+                    Record.date >= d,
+                    Record.date < d + datetime.timedelta(days=1),
+                    Record.location == location.id
+                )
+
+                for r in records:
+                    if not location_record_max or r.temperature > location_record_max.temperature:
+                        location_record_max = r
+                    if not location_record_min or r.temperature < location_record_min.temperature:
+                        location_record_min = r
+
+                if not record_max or location_record_max.temperature < record_max.temperature:
+                    record_max = location_record_max
+                if not record_min or location_record_min.temperature < record_min.temperature:
+                    record_min = location_record_min
+
+                temperature_avg = min(temperature_avg, (sum(map(lambda record: record.temperature, records)) / len(records)))
 
             Statistics(
                 date=d.date(),
                 temperature_max=record_max.temperature,
                 temperature_min=record_min.temperature,
-                temperature_avg=round((sum(map(lambda record: record.temperature, records)) / len(records)), 1),
+                temperature_avg=round(temperature_avg, 1),
                 time_max=record_max.date.time(),
                 time_min=record_min.date.time()
             ).save()
