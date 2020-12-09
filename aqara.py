@@ -31,7 +31,7 @@ class AqaraPoller:
             'pressure': payload.get('pressure')
         }
         record, created = Record.get_or_create(
-            date=arrow.now().replace(second=0, microsecond=0).datetime,
+            date=arrow.now().replace(second=0, microsecond=0).datetime.replace(tzinfo=None),
             location=self.location.id,
             defaults=data
         )
