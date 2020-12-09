@@ -1,6 +1,6 @@
-import datetime
 import json
 
+import arrow
 import paho.mqtt.client as mqtt
 
 from model import Record
@@ -25,13 +25,20 @@ class AqaraPoller:
     # The callback for when a PUBLISH message is received from the server.
     def _on_message(self, client, userdata, msg):
         payload = json.loads(msg.payload.decode())
-        Record(
-            temperature=payload.get('temperature'),
-            humidity=payload.get('humidity'),
-            pressure=payload.get('pressure'),
-            date=datetime.datetime.now(),
-            location=self.location.id
-        ).save()
+        data = {
+            'temperature': payload.get('temperature'),
+            'humidity': payload.get('humidity'),
+            'pressure': payload.get('pressure')
+        }
+        record, created = Record.get_or_create(
+            date=arrow.now().replace(second=0, microsecond=0).datetime,
+            location=self.location.id,
+            defaults=data
+        )
+        if not created:
+            for indicator, value in data:
+                setattr(record, indicator, value)
+        record.save()
 
     def loop_start(self):
         self.client.loop_start()
