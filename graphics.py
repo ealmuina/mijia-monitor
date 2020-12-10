@@ -21,17 +21,17 @@ def make_plt(start, location, temperature, humidity, single=True, i=0, historica
         h.append(r.humidity)
 
     if temperature:
-        plt.plot(times, t, label='temperature' + ('' if single else f' {location.name}'), color=cm.colors[4 + i])
         if historical_lines:
             with open('utils/mean_temps.bin', 'rb') as file:
                 mean_temps = pickle.load(file)
             tmax, tmin = [], []
-            for t in times:
-                date = '%02d-%02d' % (t.month, t.day)
+            for time in times:
+                date = '%02d-%02d' % (time.month, time.day)
                 tmax.append(mean_temps[date][0])
                 tmin.append(mean_temps[date][1])
             plt.plot(times, tmax, label='max_temperature 1975-2019', color='Red')
             plt.plot(times, tmin, label='min_temperature 1975-2019', color='Blue')
+        plt.plot(times, t, label='temperature' + ('' if single else f' {location.name}'), color=cm.colors[4 + i])
     if humidity:
         plt.plot(times, h, label='humidity' + ('' if single else f' {location.name}'), color=cm.colors[i])
 

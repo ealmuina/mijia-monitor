@@ -7,7 +7,7 @@ import pika
 import telegram
 from telegram.ext import Updater, CommandHandler
 
-import graphic
+import graphics
 from model import Location
 from tasks import get_battery
 
@@ -74,7 +74,9 @@ def _get_timespan(context):
     timespan = datetime.timedelta(days=365)
     if context.args:
         timespan = context.args[0]
-        if timespan == 'year':
+        if timespan == 'decade':
+            timespan = datetime.timedelta(days=3652)
+        elif timespan == 'year':
             timespan = datetime.timedelta(days=365)
         elif timespan == 'month':
             timespan = datetime.timedelta(days=31)
@@ -87,41 +89,52 @@ def _get_timespan(context):
     return timespan
 
 
+def _get_locations(context):
+    location = context.args[1] if context.args and len(context.args) > 1 else None
+    return Location.select().where(Location.name ** f'%{location}%')
+
+
 @authenticate
 def plot(update, context):
     timespan = _get_timespan(context)
-    for location in Location.select():
-        graphic.single_plot(timespan, location, temperature=True, humidity=True)
+    locations = _get_locations(context)
+    for location in locations:
+        graphics.single_plot(timespan, location, temperature=True, humidity=True)
         context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
-    graphic.multiple_plot(timespan, Location.select(), temperature=True, humidity=True)
-    context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
+    if not locations.exists():
+        graphics.multiple_plot(timespan, Location.select(), temperature=True, humidity=True)
+        context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
 
 
 @authenticate
 def temperature(update, context):
     timespan = _get_timespan(context)
-    for location in Location.select():
-        graphic.single_plot(timespan, location, temperature=True, humidity=False)
+    locations = _get_locations(context)
+    for location in locations:
+        graphics.single_plot(timespan, location, temperature=True, humidity=False)
         context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
-    graphic.multiple_plot(timespan, Location.select(), temperature=True, humidity=False)
-    context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
+    if not locations.exists():
+        graphics.multiple_plot(timespan, Location.select(), temperature=True, humidity=False)
+        context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
 
 
 @authenticate
 def humidity(update, context):
     timespan = _get_timespan(context)
-    for location in Location.select():
-        graphic.single_plot(timespan, location, temperature=False, humidity=True)
+    locations = _get_locations(context)
+    for location in locations:
+        graphics.single_plot(timespan, location, temperature=False, humidity=True)
         context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
-    graphic.multiple_plot(timespan, Location.select(), temperature=False, humidity=True)
-    context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
+    if not locations.exists():
+        graphics.multiple_plot(timespan, Location.select(), temperature=False, humidity=True)
+        context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
 
 
 @authenticate
 def battery(update, context):
     with open('config.json') as config:
         config = json.load(config)
-        for sensor in config['sensors']:
+        for sensor in config['sensors']['ble']:
             mac = sensor['mac']
             b = get_battery.delay(mac).get()
             update.message.reply_text(f'{sensor["location"]}: {b}%')
