@@ -7,6 +7,7 @@ import arrow
 import pika
 import requests
 import tqdm
+from bs4 import BeautifulSoup
 from btlewrap import BluepyBackend, BluetoothBackendException
 from celery import Celery
 from celery.schedules import crontab
@@ -35,6 +36,10 @@ app.conf.beat_schedule = {
     },
     'poll-aemet': {
         'task': 'tasks.poll_aemet',
+        'schedule': crontab(minute=50)
+    },
+    'poll-leganes': {
+        'task': 'tasks.poll_leganes',
         'schedule': crontab(minute=50)
     }
 }
@@ -80,6 +85,51 @@ def poll_aemet():
                         'humidity': record['hr']
                     }
                 )
+            break
+        except Exception:
+            time.sleep(60)
+            attempts += 1
+
+
+@app.task(ignore_result=True)
+def poll_leganes():
+    attempts = 0
+    while attempts < 5:
+        try:
+            leganes_location = Location.get(Location.name == 'leganes')
+            response = requests.get(
+                'http://gestiona.madrid.org/azul_internet/html/web/DatosEstacion24Accion.icm?ESTADO_MENU=2_1',
+                params={
+                    'estaciones': 2,
+                    'aceptar': 'Aceptar'
+                }
+            )
+            soup = BeautifulSoup(response.text, 'html.parser')
+            for table in soup.findAll('table'):
+                if table.find('td', text='Parámetros Meteorológicos'):
+                    for record in table.find('tbody').findAll('tr'):
+                        try:
+                            values = record.findAll('td')
+                            record_time = values[0].text.strip()
+                            record_time = arrow.get(record_time, 'HH:mm', tzinfo='UTC')
+                            record_time = arrow.utcnow().replace(
+                                hour=record_time.hour,
+                                minute=record_time.minute,
+                                second=0,
+                                microsecond=0
+                            ).to('Europe/Madrid').datetime.replace(tzinfo=None)
+                            record_temp, record_hr, record_pre = map(lambda x: float(x.text.strip()), values[3:6])
+                            Record.get_or_create(
+                                date=record_time,
+                                location=leganes_location,
+                                defaults={
+                                    'pressure': record_pre,
+                                    'temperature': record_temp,
+                                    'humidity': record_hr
+                                }
+                            )
+                        except Exception:
+                            continue
             break
         except Exception:
             time.sleep(60)
@@ -144,6 +194,11 @@ def generate_statistics():
             ).save()
 
     send_daily_statistics()
+
+
+@app.task(ignore_result=True)
+def train_model():
+    pass
 
 
 def send_daily_statistics():
