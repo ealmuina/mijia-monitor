@@ -4,6 +4,7 @@ import json
 import time
 
 import arrow
+import joblib
 import pika
 import requests
 import tqdm
@@ -12,6 +13,7 @@ from btlewrap import BluepyBackend, BluetoothBackendException
 from celery import Celery
 from celery.schedules import crontab
 from dateutil.rrule import rrule, DAILY
+from sklearn.linear_model import SGDRegressor
 
 from mitemp_bt.mitemp_bt_poller import MiTempBtPoller, MI_TEMPERATURE, MI_HUMIDITY
 from model import Record, Statistics, Location
@@ -34,14 +36,14 @@ app.conf.beat_schedule = {
         'task': 'tasks.generate_statistics',
         'schedule': crontab(hour=0, minute=5)
     },
-    'poll-aemet': {
-        'task': 'tasks.poll_aemet',
-        'schedule': crontab(minute=50)
-    },
     'poll-leganes': {
         'task': 'tasks.poll_leganes',
         'schedule': crontab(minute=50)
-    }
+    },
+    'train-model': {
+        'task': 'tasks.train_model',
+        'schedule': crontab(hour=1, minute=5)
+    },
 }
 app.conf.timezone = 'Europe/Madrid'
 
@@ -112,7 +114,9 @@ def poll_leganes():
                             values = record.findAll('td')
                             record_time = values[0].text.strip()
                             record_time = arrow.get(record_time, 'HH:mm', tzinfo='UTC')
-                            record_time = arrow.utcnow().replace(
+                            now = arrow.utcnow()
+                            day = now if record_time.time() <= now.time() else now.shift(days=-1)
+                            record_time = day.replace(
                                 hour=record_time.hour,
                                 minute=record_time.minute,
                                 second=0,
@@ -198,7 +202,48 @@ def generate_statistics():
 
 @app.task(ignore_result=True)
 def train_model():
-    pass
+    try:
+        model_temp = joblib.load('temperature.joblib')
+        model_hr = joblib.load('humidity.joblib')
+    except:
+        model_temp = SGDRegressor()
+        model_hr = SGDRegressor()
+
+    # Take last 24 hours observations
+    yesterday = datetime.datetime.today() - datetime.timedelta(days=1)
+    yesterday = yesterday.date()
+
+    y_temp, y_hr = [], []
+    X_temp, X_hr = [], []
+
+    # Build dataset. y - remote record, X - local records
+    for remote_record in Record.select().join(Location).where(Location.name == 'leganes', Record.date >= yesterday):
+        y_temp.append(remote_record.temperature)
+        y_hr.append(remote_record.humidity)
+        try:
+            x_temp, x_hr = [], []
+            # For every remote record find the nearest local records
+            for location in Location.select().where(Location.outdoor == True, Location.remote == False):
+                local_record = Record.select().where(
+                    Record.location == location.id,
+                    Record.date >= remote_record.date
+                ).order_by(
+                    Record.date.asc()
+                )[0]
+                x_temp.append(local_record.temperature)
+                x_hr.append(local_record.humidity)
+        except:
+            y_temp.pop()
+            y_hr.pop()
+            continue
+        X_temp.append(x_temp)
+        X_hr.append(x_hr)
+
+    model_temp.partial_fit(X_temp, y_temp)
+    model_hr.partial_fit(X_hr, y_hr)
+
+    joblib.dump(model_temp, 'temperature.joblib')
+    joblib.dump(model_hr, 'humidity.joblib')
 
 
 def send_daily_statistics():
