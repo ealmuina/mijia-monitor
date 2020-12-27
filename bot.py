@@ -90,8 +90,11 @@ def _get_timespan(context):
 
 
 def _get_locations(context):
-    location = context.args[1] if context.args and len(context.args) > 1 else None
-    return Location.select().where(Location.name ** f'%{location}%')
+    location = context.args[1] if context.args and len(context.args) > 1 else ''
+    return Location.select().where(
+        Location.name ** f'%{location}%',
+        Location.hidden == False
+    )
 
 
 @authenticate
