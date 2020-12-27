@@ -7,6 +7,7 @@ class Location(Model):
     name = CharField()
     outdoor = BooleanField()
     remote = BooleanField(default=False)
+    hidden = BooleanField(default=False)
 
     class Meta:
         database = db
