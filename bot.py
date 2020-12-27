@@ -90,7 +90,7 @@ def _get_timespan(context):
 
 
 def _get_locations(context):
-    location = context.args[1] if context.args and len(context.args) > 1 else ''
+    location = context.args[1] if context.args and len(context.args) > 1 else None
     return Location.select().where(
         Location.name ** f'%{location}%',
         Location.hidden == False
@@ -105,7 +105,7 @@ def plot(update, context):
         graphics.single_plot(timespan, location, temperature=True, humidity=True)
         context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
     if not locations.exists():
-        graphics.multiple_plot(timespan, Location.select(), temperature=True, humidity=True)
+        graphics.multiple_plot(timespan, Location.select().where(Location.hidden == False), temperature=True, humidity=True)
         context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
 
 
@@ -117,7 +117,7 @@ def temperature(update, context):
         graphics.single_plot(timespan, location, temperature=True, humidity=False)
         context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
     if not locations.exists():
-        graphics.multiple_plot(timespan, Location.select(), temperature=True, humidity=False)
+        graphics.multiple_plot(timespan, Location.select().where(Location.hidden == False), temperature=True, humidity=False)
         context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
 
 
@@ -129,7 +129,7 @@ def humidity(update, context):
         graphics.single_plot(timespan, location, temperature=False, humidity=True)
         context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
     if not locations.exists():
-        graphics.multiple_plot(timespan, Location.select(), temperature=False, humidity=True)
+        graphics.multiple_plot(timespan, Location.select().where(Location.hidden == False), temperature=False, humidity=True)
         context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
 
 
