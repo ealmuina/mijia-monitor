@@ -35,8 +35,8 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour=0, minute=5)
     },
     'poll-leganes': {
-        'task': 'tasks.poll_leganes',
-        'schedule': crontab(minute=50)
+        'task': 'tasks.poll_leganes_wu',
+        'schedule': crontab()
     },
 }
 app.conf.timezone = 'Europe/Madrid'
@@ -89,7 +89,7 @@ def poll_aemet():
 
 
 @app.task(ignore_result=True)
-def poll_leganes():
+def poll_leganes_cm():
     attempts = 0
     while attempts < 5:
         try:
@@ -135,6 +135,37 @@ def poll_leganes():
             attempts += 1
 
 
+@app.task(ignore_result=True)
+def poll_leganes_wu():
+    attempts = 0
+    while attempts < 5:
+        try:
+            leganes_location = Location.get(Location.name == 'leganes')
+            response = requests.get(
+                'https://api.weather.com/v2/pws/observations/current',
+                params={
+                    'apiKey': CONFIG['wu_api_key'],
+                    'stationId': 'ILEGAN9',
+                    'numericPrecision': 'decimal',
+                    'format': 'json',
+                    'units': 'm'
+                }
+            )
+            data = response.json().get('observations')[0]
+            Record.get_or_create(
+                date=arrow.get(data['epoch']).to('Europe/Madrid').datetime.replace(tzinfo=None),
+                location=leganes_location,
+                defaults={
+                    'temperature': data['metric']['temp'],
+                    'humidity': data['humidity']
+                }
+            )
+            break
+        except Exception:
+            time.sleep(60)
+            attempts += 1
+
+
 @app.task
 def get_battery(mac):
     poller = MiTempBtPoller(mac, BluepyBackend)
@@ -148,7 +179,7 @@ def get_battery(mac):
 
 @app.task(ignore_result=True)
 def generate_statistics():
-    locations = Location.select().where(Location.outdoor == True, Location.remote == False)
+    locations = Location.select().where(Location.outdoor == True, Location.hidden == False)
     record_qs = Record.select().where(Record.location.in_(locations))
 
     start = record_qs.order_by(Record.date).first().date
