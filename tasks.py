@@ -200,6 +200,8 @@ def generate_statistics():
                     Record.date < d + datetime.timedelta(days=1),
                     Record.location == location.id
                 )
+                if not records.exists():
+                    continue
 
                 for r in records:
                     if not location_record_max or r.temperature > location_record_max.temperature:
