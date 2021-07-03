@@ -38,6 +38,11 @@ app.conf.beat_schedule = {
         'task': 'tasks.poll_leganes_wu',
         'schedule': crontab()
     },
+    # Executes every 5 minutes.
+    'check-windows-conditions': {
+        'task': 'tasks.check_windows_conditions',
+        'schedule': crontab(minute='*/5')
+    }
 }
 app.conf.timezone = 'Europe/Madrid'
 
@@ -311,3 +316,66 @@ def _send_statistics(channel, period, statistics):
             'text': message
         })
     )
+
+
+def get_last_record_for_location(location, delay_minutes=0):
+    last_date = datetime.datetime.now() - datetime.timedelta(minutes=delay_minutes)
+
+    return Record.select().where(
+        Record.location == location,
+        Record.date <= last_date
+    ).order_by(
+        Record.date.desc()
+    ).first()
+
+
+@app.task(ignore_result=True)
+def check_windows_conditions():
+    indoors = Location.select().where(Location.outdoor == False).first()
+    local_outdoors = Location.select().where(
+        Location.outdoor == True,
+        Location.hidden == False,
+        Location.remote == True
+    ).first()
+
+    record_indoors = get_last_record_for_location(indoors)
+    record_30_min_ago_indoors = get_last_record_for_location(indoors, 30)
+    record_outdoors = get_last_record_for_location(local_outdoors)
+    record_30_min_ago_outdoors = get_last_record_for_location(local_outdoors, 30)
+
+    delta_degrees = 0.5
+    resolution = None
+
+    if record_30_min_ago_indoors.temperature - record_30_min_ago_outdoors.temperature > delta_degrees and \
+            record_indoors.temperature - record_outdoors.temperature < -delta_degrees:
+        # Temperature 30 minutes ago was lower outdoors than indoors by more than delta_degrees degrees
+        # Now temperature is lower indoors than outdoors by more than delta_degrees degrees
+        # Send notification to close windows
+        resolution = "Close the windows"
+
+    if record_30_min_ago_indoors.temperature - record_30_min_ago_outdoors.temperature < -delta_degrees and \
+            record_indoors.temperature - record_outdoors.temperature > delta_degrees:
+        # Temperature 30 minutes ago was lower indoors than outdoors by more than delta_degrees degrees
+        # Now temperature is lower outdoors than indoors by more than delta_degrees degrees
+        # Send notification to open windows
+        resolution = "Open the windows"
+
+    if resolution:
+        connection = pika.BlockingConnection(pika.ConnectionParameters(
+            host=CONFIG['rabbitmq-host'],
+            credentials=pika.PlainCredentials(CONFIG['rabbitmq-user'], CONFIG['rabbitmq-password'])
+        ))
+        channel = connection.channel()
+        channel.basic_qos(prefetch_count=1)
+        channel.basic_publish(
+            exchange='',
+            routing_key='mijia-notify',
+            properties=pika.BasicProperties(
+                content_type='application/json'
+            ),
+            body=json.dumps({
+                'text': f'<pre>Outdoor temp: {record_outdoors.temperature}ºC\n'
+                        f'Indoor temp:  {record_indoors.temperature}ºC</pre>\n'
+                        f'===> <b>{resolution}</b>'
+            })
+        )
