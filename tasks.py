@@ -46,6 +46,9 @@ app.conf.beat_schedule = {
 }
 app.conf.timezone = 'Europe/Madrid'
 
+LAST_WINDOWS_RESOLUTION_TIME = None
+WINDOWS_CLOSED = True
+
 
 @app.task(ignore_result=True)
 def poll_sensor(mac, location_id):
@@ -345,22 +348,33 @@ def check_windows_conditions():
 
     delta_degrees = 0.5
     resolution = None
+    global WINDOWS_CLOSED
 
-    if record_30_min_ago_indoors.temperature - record_30_min_ago_outdoors.temperature > delta_degrees and \
-            record_indoors.temperature - record_outdoors.temperature < -delta_degrees:
-        # Temperature 30 minutes ago was lower outdoors than indoors by more than delta_degrees degrees
+    if not WINDOWS_CLOSED and \
+            record_30_min_ago_outdoors.temperature - record_outdoors.temperature > delta_degrees and \
+            record_indoors.temperature - record_outdoors.temperature < -delta_degrees \
+            and record_indoors.temperature > 23:
+        # Temperature outdoors is growing
         # Now temperature is lower indoors than outdoors by more than delta_degrees degrees
         # Send notification to close windows
         resolution = "Close the windows"
+        WINDOWS_CLOSED = True
 
-    if record_30_min_ago_indoors.temperature - record_30_min_ago_outdoors.temperature < -delta_degrees and \
-            record_indoors.temperature - record_outdoors.temperature > delta_degrees:
-        # Temperature 30 minutes ago was lower indoors than outdoors by more than delta_degrees degrees
+    if WINDOWS_CLOSED and \
+            record_30_min_ago_outdoors.temperature - record_outdoors.temperature < delta_degrees and \
+            record_outdoors.temperature - record_indoors.temperature < -delta_degrees and \
+            record_indoors.temperature > 25:
+        # Temperature is lowering
         # Now temperature is lower outdoors than indoors by more than delta_degrees degrees
         # Send notification to open windows
         resolution = "Open the windows"
+        WINDOWS_CLOSED = False
 
-    if resolution:
+    now = datetime.datetime.now()
+    global LAST_WINDOWS_RESOLUTION_TIME
+
+    if resolution and (not LAST_WINDOWS_RESOLUTION_TIME or (now - LAST_WINDOWS_RESOLUTION_TIME) > datetime.timedelta(hours=1)):
+        LAST_WINDOWS_RESOLUTION_TIME = now
         connection = pika.BlockingConnection(pika.ConnectionParameters(
             host=CONFIG['rabbitmq-host'],
             credentials=pika.PlainCredentials(CONFIG['rabbitmq-user'], CONFIG['rabbitmq-password'])
