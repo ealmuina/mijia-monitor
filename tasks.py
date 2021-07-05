@@ -14,7 +14,7 @@ from celery.schedules import crontab
 from dateutil.rrule import rrule, DAILY
 
 from mitemp_bt.mitemp_bt_poller import MiTempBtPoller, MI_TEMPERATURE, MI_HUMIDITY
-from model import Record, Statistics, Location
+from model import Record, Statistics, Location, WindowsDecision
 
 requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += ':HIGH:!DH:!aNULL'
 try:
@@ -45,9 +45,6 @@ app.conf.beat_schedule = {
     }
 }
 app.conf.timezone = 'Europe/Madrid'
-
-LAST_WINDOWS_RESOLUTION_TIME = None
-WINDOWS_CLOSED = True
 
 
 @app.task(ignore_result=True)
@@ -349,35 +346,32 @@ def check_windows_conditions():
     record_outdoors = get_last_record_for_location(local_outdoors)
     record_30_min_ago_outdoors = get_last_record_for_location(local_outdoors, 30)
 
-    delta_degrees = 0.5
-    resolution = None
-    global WINDOWS_CLOSED
+    last_decision = WindowsDecision.select().order_by(WindowsDecision.date.desc()).first()
 
-    if not WINDOWS_CLOSED and \
-            record_30_min_ago_outdoors.temperature - record_outdoors.temperature > delta_degrees and \
+    delta_degrees = 0.5
+    close_windows = None
+
+    if (not last_decision or not last_decision.close) and \
+            record_30_min_ago_outdoors.temperature - record_outdoors.temperature < -delta_degrees and \
             record_indoors.temperature - record_outdoors.temperature < -delta_degrees \
             and record_indoors.temperature > 23:
         # Temperature outdoors is growing
         # Now temperature is lower indoors than outdoors by more than delta_degrees degrees
         # Send notification to close windows
-        resolution = "Close the windows"
-        WINDOWS_CLOSED = True
+        close_windows = True
 
-    if WINDOWS_CLOSED and \
-            record_30_min_ago_outdoors.temperature - record_outdoors.temperature < delta_degrees and \
+    if (not last_decision or last_decision.close) and \
+            record_30_min_ago_outdoors.temperature - record_outdoors.temperature > delta_degrees and \
             record_outdoors.temperature - record_indoors.temperature < -delta_degrees and \
             record_indoors.temperature > 25:
         # Temperature is lowering
         # Now temperature is lower outdoors than indoors by more than delta_degrees degrees
         # Send notification to open windows
-        resolution = "Open the windows"
-        WINDOWS_CLOSED = False
+        close_windows = False
 
     now = datetime.datetime.now()
-    global LAST_WINDOWS_RESOLUTION_TIME
 
-    if resolution and (not LAST_WINDOWS_RESOLUTION_TIME or (now - LAST_WINDOWS_RESOLUTION_TIME) > datetime.timedelta(hours=1)):
-        LAST_WINDOWS_RESOLUTION_TIME = now
+    if close_windows is not None and (not last_decision or (now - last_decision.date) > datetime.timedelta(hours=1)):
         connection = pika.BlockingConnection(pika.ConnectionParameters(
             host=CONFIG['rabbitmq-host'],
             credentials=pika.PlainCredentials(CONFIG['rabbitmq-user'], CONFIG['rabbitmq-password'])
@@ -393,6 +387,10 @@ def check_windows_conditions():
             body=json.dumps({
                 'text': f'<pre>Outdoor temp: {record_outdoors.temperature}ºC\n'
                         f'Indoor temp:  {record_indoors.temperature}ºC</pre>\n'
-                        f'===> <b>{resolution}</b>'
+                        f'===> <b>{"Close" if close_windows else "Open"} the windows</b>'
             })
         )
+        WindowsDecision(
+            date=now,
+            close=close_windows
+        ).save()

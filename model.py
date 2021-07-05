@@ -36,5 +36,13 @@ class Statistics(Model):
         database = db
 
 
-for table in (Location, Record, Statistics):
+class WindowsDecision(Model):
+    date = DateTimeField(index=True)
+    close = BooleanField(default=True)
+
+    class Meta:
+        database = db
+
+
+for table in (Location, Record, Statistics, WindowsDecision):
     table.create_table()
