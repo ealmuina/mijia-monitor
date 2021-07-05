@@ -187,7 +187,11 @@ def get_battery(mac):
 
 @app.task(ignore_result=True)
 def generate_statistics():
-    locations = Location.select().where(Location.outdoor == True, Location.hidden == False)
+    locations = Location.select().where(
+        Location.outdoor == True,
+        Location.hidden == False,
+        Location.remote == True,
+    )
     record_qs = Record.select().where(Record.location.in_(locations))
 
     start = record_qs.order_by(Record.date).first().date
@@ -342,7 +346,6 @@ def check_windows_conditions():
     ).first()
 
     record_indoors = get_last_record_for_location(indoors)
-    record_30_min_ago_indoors = get_last_record_for_location(indoors, 30)
     record_outdoors = get_last_record_for_location(local_outdoors)
     record_30_min_ago_outdoors = get_last_record_for_location(local_outdoors, 30)
 
