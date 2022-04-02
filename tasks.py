@@ -225,14 +225,15 @@ def generate_statistics():
 
                 temperature_avg = min(temperature_avg, (sum(map(lambda record: record.temperature, records)) / len(records)))
 
-            Statistics(
-                date=d.date(),
-                temperature_max=record_max.temperature,
-                temperature_min=record_min.temperature,
-                temperature_avg=round(temperature_avg, 1),
-                time_max=record_max.date.time(),
-                time_min=record_min.date.time()
-            ).save()
+            if record_max and record_min:
+                Statistics(
+                    date=d.date(),
+                    temperature_max=record_max.temperature,
+                    temperature_min=record_min.temperature,
+                    temperature_avg=round(temperature_avg, 1),
+                    time_max=record_max.date.time(),
+                    time_min=record_min.date.time()
+                ).save()
 
     send_daily_statistics()
 
