@@ -23,10 +23,12 @@ except AttributeError:
     # no pyopenssl support used / needed / available
     pass
 
-app = Celery('tasks', backend='rpc://', broker='pyamqp://guest@localhost//')
-
 with open('config.json') as file:
     CONFIG = json.load(file)
+
+broker_url = f'pyamqp://{CONFIG["rabbitmq-user"]}:{CONFIG["rabbitmq-password"]}@{CONFIG["rabbitmq-host"]}:5672//'
+app = Celery('tasks', backend='rpc://', broker=broker_url)
+app.conf.task_default_queue = 'mijia-celery'
 
 app.conf.beat_schedule = {
     # Executes daily at midnight.
