@@ -28,8 +28,8 @@ with open('config.json') as file:
 
 broker_url = f'pyamqp://{CONFIG["rabbitmq-user"]}:{CONFIG["rabbitmq-password"]}@{CONFIG["rabbitmq-host"]}:5672//'
 app = Celery('tasks', backend='rpc://', broker=broker_url)
-app.conf.task_default_queue = 'mijia-celery'
 
+app.conf.task_default_queue = 'mijia-celery'
 app.conf.beat_schedule = {
     # Executes daily at midnight.
     'daily-statistics': {
@@ -47,9 +47,10 @@ app.conf.beat_schedule = {
     }
 }
 app.conf.timezone = 'Europe/Madrid'
+app.conf.task_time_limit = 600
 
 
-@app.task(ignore_result=True)
+@app.task(ignore_result=True, time_limit=60)
 def poll_sensor(mac, location_id):
     attempts = 0
     while attempts < 5:
