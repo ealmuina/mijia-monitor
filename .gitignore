@@ -2,3 +2,4 @@
 db/
 sandbox.py
 secrets.env
+celerybeat-schedule
