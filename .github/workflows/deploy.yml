@@ -8,9 +8,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: ./.github/set-environment
-        with:
-          secret_key: ${{ secrets.SECRET_KEY }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
