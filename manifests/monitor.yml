@@ -20,7 +20,7 @@ spec:
           envFrom:
             - secretRef:
                 name: mijia-secrets
-          command: [ "python", "-u", "-m", "mijia.mqtt_daemon" ]
+          command: [ "python", "-u", "-m", "mijia.monitor" ]
           volumeMounts:
             - mountPath: /app/db
               name: sqlite-volume
