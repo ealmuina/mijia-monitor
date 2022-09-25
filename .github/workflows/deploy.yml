@@ -56,7 +56,7 @@ jobs:
             # Create .env file
             touch secrets.env
             echo TELEGRAM_API_KEY=${{ secrets.TELEGRAM_API_KEY }} > secrets.env
-            echo TELEGRAM_WHITELIST=${{ secrets.TELEGRAM_WHITELIST }} > secrets.env
+            echo TELEGRAM_WHITELIST=${{ secrets.TELEGRAM_WHITELIST }} >> secrets.env
             echo MQTT_BROKER_HOST=${{ secrets.MQTT_BROKER_HOST }} >> secrets.env
             echo MQTT_BROKER_PORT=${{ secrets.MQTT_BROKER_PORT }} >> secrets.env
             echo MQTT_USERNAME=${{ secrets.MQTT_USERNAME }} >> secrets.env
