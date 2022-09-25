@@ -1,0 +1,4 @@
+.idea/
+db/
+sandbox.py
+secrets.env
