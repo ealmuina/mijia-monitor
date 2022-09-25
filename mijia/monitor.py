@@ -1,6 +1,7 @@
-import datetime
 import json
 import logging
+
+import arrow
 
 from mijia.models import Record, Location
 from mijia.utils import get_mqtt_client
@@ -16,10 +17,11 @@ def on_message(client, userdata, message):
                 Location.node_id == payload['node_id']
             )
             # Create record
+            now = arrow.now('Europe/Madrid')
             Record.create(
                 temperature=payload['temperature'],
                 humidity=payload['humidity'],
-                date=datetime.datetime.now(),
+                date=now.datetime.replace(tzinfo=None),
                 location=location
             )
         except Exception as e:
