@@ -21,3 +21,10 @@ spec:
             - secretRef:
                 name: mijia-secrets
           command: [ "celery", "-A", "mijia.tasks", "beat", "-l", "info" ]
+          volumeMounts:
+            - mountPath: /app/db
+              name: sqlite-volume
+      volumes:
+        - name: sqlite-volume
+          persistentVolumeClaim:
+            claimName: mijia-pvc
