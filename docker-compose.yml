@@ -1,0 +1,39 @@
+services:
+  bot:
+    env_file:
+      - secrets.env
+    build:
+      context: .
+    volumes:
+      - .:/app
+    command: python -u -m mijia.bot
+  monitor:
+    env_file:
+      - secrets.env
+    build:
+      context: .
+    volumes:
+      - .:/app
+    command: python -u -m mijia.monitor
+  mijia-redis:
+    image: redis
+  celery:
+    env_file:
+      - secrets.env
+    build:
+      context: .
+    volumes:
+      - .:/app
+    depends_on:
+      - mijia-redis
+    command: celery -A mijia.tasks worker -l info
+  celery-beat:
+    env_file:
+      - secrets.env
+    build:
+      context: .
+    volumes:
+      - .:/app
+    depends_on:
+      - mijia-redis
+    command: celery -A mijia.tasks beat -l info

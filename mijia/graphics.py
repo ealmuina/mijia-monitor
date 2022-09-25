@@ -3,7 +3,7 @@ import pickle
 
 import matplotlib.pyplot as plt
 
-from model import Record
+from mijia.models import Record
 
 cm = plt.cm.get_cmap('tab20c')
 
@@ -22,7 +22,7 @@ def make_plt(start, location, temperature, humidity, single=True, i=0, historica
 
     if temperature:
         if historical_lines:
-            with open('utils/mean_temps.bin', 'rb') as file:
+            with open('/app/utils/mean_temps.bin', 'rb') as file:
                 mean_temps = pickle.load(file)
             tmax, tmin = [], []
             for time in times:

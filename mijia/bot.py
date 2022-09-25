@@ -1,33 +1,32 @@
 import datetime
 import json
 import logging
+import os
 import threading
 
-import pika
 import telegram
 from telegram.ext import Updater, CommandHandler
 
-import graphics
-from model import Location
-from tasks import get_battery
+import mijia.graphics as graphics
+from mijia.models import Location
+from mijia.utils import get_mqtt_client
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
-with open('config.json') as file:
-    CONFIG = json.load(file)
+WHITELIST = os.environ['TELEGRAM_WHITELIST'].split(',')
 
 
-def _send_notification(ch, method, props, body):
-    notification = json.loads(body)
+def _send_notification(client, userdata, message):
+    payload = json.loads(message.payload)
     try:
-        for user_id in CONFIG['whitelist']:
+        for user_id in WHITELIST:
             logger.info('Sending notification to %d', user_id)
             BOT.send_message(
                 chat_id=user_id,
-                text=notification['text'],
+                text=payload['text'],
                 parse_mode=telegram.ParseMode.HTML
             )
     except Exception as e:
@@ -35,34 +34,22 @@ def _send_notification(ch, method, props, body):
 
 
 def listen_notifications():
-    # Setup rabbitmq
-    connection = pika.BlockingConnection(pika.ConnectionParameters(
-        host=CONFIG['rabbitmq-host'],
-        credentials=pika.PlainCredentials(CONFIG['rabbitmq-user'], CONFIG['rabbitmq-password'])
-    ))
-    channel = connection.channel()
-    channel.basic_qos(prefetch_count=1)
-    result = channel.queue_declare(queue='mijia-notify', durable=True)
-    queue = result.method.queue
-    channel.basic_consume(
-        queue=queue,
-        on_message_callback=_send_notification,
-        auto_ack=True
-    )
+    # Setup MQTT client
+    client = get_mqtt_client()
+    client.on_message = _send_notification
+    client.subscribe('mijia/notification', qos=2)
+
     try:
-        channel.start_consuming()
-    except KeyboardInterrupt:
-        channel.stop_consuming()
+        client.loop_forever()
     except Exception as e:
         logger.error(e)
-    connection.close()
+
+    client.disconnect()
 
 
 def authenticate(func):
-    whitelist = CONFIG['whitelist']
-
     def validate_chat(update, context):
-        if update.message.from_user.id in whitelist:
+        if update.message.from_user.id in WHITELIST:
             func(update, context)
         else:
             update.message.reply_text('Sorry, you are not authenticated.')
@@ -133,16 +120,6 @@ def humidity(update, context):
         context.bot.send_photo(chat_id=update.message.chat_id, photo=open('plot.png', 'rb'))
 
 
-@authenticate
-def battery(update, context):
-    with open('config.json') as config:
-        config = json.load(config)
-        for sensor in config['sensors']['ble']:
-            mac = sensor['mac']
-            b = get_battery.delay(mac).get()
-            update.message.reply_text(f'{sensor["location"]}: {b}%')
-
-
 def error(update, context):
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, context.error)
@@ -150,8 +127,8 @@ def error(update, context):
 
 def main():
     """Start the bot."""
-    # Create the Updater and pass it your bot's token.
-    updater = Updater(CONFIG['telegram-api-key'])
+    # Create the Updater and pass it bot's token.
+    updater = Updater(os.environ['TELEGRAM_API_KEY'])
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
@@ -160,7 +137,6 @@ def main():
     dp.add_handler(CommandHandler("plot", plot))
     dp.add_handler(CommandHandler("temperature", temperature))
     dp.add_handler(CommandHandler("humidity", humidity))
-    dp.add_handler(CommandHandler("battery", battery))
 
     # log all errors
     dp.add_error_handler(error)

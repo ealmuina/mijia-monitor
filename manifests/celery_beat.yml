@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mijia-celery-beat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mijia
+      component: celery-beat
+  template:
+    metadata:
+      labels:
+        app: mijia
+        component: celery-beat
+    spec:
+      containers:
+        - name: celery-beat
+          image: ealmuina/mijia:latest
+          envFrom:
+            - secretRef:
+                name: mijia-secrets
+          command: [ "celery", "-A", "mijia.tasks", "beat", "-l", "info" ]

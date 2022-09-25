@@ -1,6 +1,6 @@
 from peewee import *
 
-db = SqliteDatabase('mijia.db')
+db = SqliteDatabase('/app/db/mijia.db')
 
 
 class Location(Model):
@@ -8,6 +8,7 @@ class Location(Model):
     outdoor = BooleanField()
     remote = BooleanField(default=False)
     hidden = BooleanField(default=False)
+    node_id = CharField(null=True)
 
     class Meta:
         database = db
@@ -16,7 +17,6 @@ class Location(Model):
 class Record(Model):
     temperature = FloatField()
     humidity = FloatField()
-    pressure = FloatField(null=True)
     date = DateTimeField(index=True)
     location = ForeignKeyField(Location)
 

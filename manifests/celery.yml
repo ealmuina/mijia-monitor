@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mijia-celery
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mijia
+      component: celery
+  template:
+    metadata:
+      labels:
+        app: mijia
+        component: celery
+    spec:
+      containers:
+        - name: celery
+          image: ealmuina/mijia:latest
+          envFrom:
+            - secretRef:
+                name: mijia-secrets
+          command: [ "celery", "-A", "mijia.tasks", "worker", "-l", "info" ]
+          volumeMounts:
+            - mountPath: /app/db
+              name: sqlite-volume
+      volumes:
+        - name: sqlite-volume
+          persistentVolumeClaim:
+            claimName: mijia-pvc

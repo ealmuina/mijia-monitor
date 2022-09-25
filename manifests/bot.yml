@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mijia-bot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mijia
+      component: bot
+  template:
+    metadata:
+      labels:
+        app: mijia
+        component: bot
+    spec:
+      containers:
+        - name: bot
+          image: ealmuina/mijia:latest
+          envFrom:
+            - secretRef:
+                name: mijia-secrets
+          command: [ "python", "-u", "-m", "mijia.bot" ]
+          volumeMounts:
+            - mountPath: /app/db
+              name: sqlite-volume
+      volumes:
+        - name: sqlite-volume
+          persistentVolumeClaim:
+            claimName: mijia-pvc

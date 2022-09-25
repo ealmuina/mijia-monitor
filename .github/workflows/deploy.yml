@@ -1,0 +1,84 @@
+name: deploy
+on:
+  push:
+    branches:
+      - master
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ./.github/set-environment
+        with:
+          secret_key: ${{ secrets.SECRET_KEY }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build image and push to Docker Hub
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ealmuina/mijia:latest
+
+      - name: Image digest
+        run: echo ${{ steps.docker_build.outputs.digest }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: ./.github/set-environment
+        with:
+          secret_key: ${{ secrets.SECRET_KEY }}
+
+      - name: Deploy to production server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            cd mijia
+            
+            # Pull new code
+            git stash
+            git checkout main
+            git pull
+            
+            # Create .env file
+            touch secrets.env
+            echo TELEGRAM_API_KEY=${{ secrets.TELEGRAM_API_KEY }} > secrets.env
+            echo TELEGRAM_WHITELIST=${{ secrets.TELEGRAM_WHITELIST }} > secrets.env
+            echo MQTT_BROKER_HOST=${{ secrets.MQTT_BROKER_HOST }} >> secrets.env
+            echo MQTT_BROKER_PORT=${{ secrets.MQTT_BROKER_PORT }} >> secrets.env
+            echo MQTT_USERNAME=${{ secrets.MQTT_USERNAME }} >> secrets.env
+            echo MQTT_PASSWORD=${{ secrets.MQTT_PASSWORD }} >> secrets.env
+            echo CA_CERTS=${{ secrets.CA_CERTS }} >> secrets.env
+            echo WU_API_KEY=${{ secrets.WU_API_KEY }} >> secrets.env
+            
+            # Create k8s secrets
+            kubectl delete secret mijia-secrets
+            kubectl create secret generic mijia-secrets --from-env-file=secrets.env
+            
+            # Build containers
+            for file in manifests/*; do
+              kubectl apply -f $file
+            done
+            
+            # Delete old pods
+            kubectl delete replicaset -l app=mijia

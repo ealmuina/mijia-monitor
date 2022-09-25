@@ -1,20 +1,17 @@
 import calendar
 import datetime
-import json
+import os
 import time
 
 import arrow
-import pika
 import requests
 import tqdm
-from bs4 import BeautifulSoup
-from btlewrap import BluepyBackend, BluetoothBackendException
 from celery import Celery
 from celery.schedules import crontab
 from dateutil.rrule import rrule, DAILY
 
-from mitemp_bt.mitemp_bt_poller import MiTempBtPoller, MI_TEMPERATURE, MI_HUMIDITY
-from model import Record, Statistics, Location, WindowsDecision
+from mijia.models import Record, Statistics, Location, WindowsDecision
+from mijia.utils import get_mqtt_client
 
 requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += ':HIGH:!DH:!aNULL'
 try:
@@ -23,124 +20,31 @@ except AttributeError:
     # no pyopenssl support used / needed / available
     pass
 
-with open('config.json') as file:
-    CONFIG = json.load(file)
+app = Celery(
+    'tasks',
+    broker='redis://mijia-redis:6379/0',
+    backend='redis://mijia-redis:6379/0'
+)
 
-broker_url = f'pyamqp://{CONFIG["rabbitmq-user"]}:{CONFIG["rabbitmq-password"]}@{CONFIG["rabbitmq-host"]}:5672//'
-app = Celery('tasks', backend='rpc://', broker=broker_url)
-
-app.conf.task_default_queue = 'mijia-celery'
 app.conf.beat_schedule = {
     # Executes daily at midnight.
     'daily-statistics': {
-        'task': 'tasks.generate_statistics',
+        'task': 'mijia.tasks.generate_statistics',
         'schedule': crontab(hour=0, minute=5)
     },
+    # Executes every minute.
     'poll-leganes': {
-        'task': 'tasks.poll_leganes_wu',
-        'schedule': crontab()
+        'task': 'mijia.tasks.poll_leganes_wu',
+        'schedule': crontab(minute='*')
     },
     # Executes every 5 minutes.
     'check-windows-conditions': {
-        'task': 'tasks.check_windows_conditions',
+        'task': 'mijia.tasks.check_windows_conditions',
         'schedule': crontab(minute='*/5')
     }
 }
 app.conf.timezone = 'Europe/Madrid'
-app.conf.task_time_limit = 600
-
-
-@app.task(ignore_result=True, time_limit=60)
-def poll_sensor(mac, location_id):
-    attempts = 0
-    while attempts < 5:
-        try:
-            poller = MiTempBtPoller(mac, BluepyBackend)
-            t = poller.parameter_value(MI_TEMPERATURE, read_cached=False)
-            h = poller.parameter_value(MI_HUMIDITY, read_cached=False)
-            now = datetime.datetime.now()
-            Record(
-                temperature=t,
-                humidity=h,
-                date=now,
-                location=location_id
-            ).save()
-            break
-        except BluetoothBackendException:
-            time.sleep(10)
-            attempts += 1
-
-
-@app.task(ignore_result=True)
-def poll_aemet():
-    attempts = 0
-    while attempts < 5:
-        try:
-            amet_location = Location.get(Location.name == 'aemet')
-            r = requests.get('https://opendata.aemet.es/opendata/api/observacion/convencional/datos/estacion/3195/', params={'api_key': CONFIG['aemet_api_key']})
-            data_url = r.json().get('datos')
-            r = requests.get(data_url)
-            for record in r.json():
-                Record.get_or_create(
-                    date=arrow.get(record['fint']).datetime.replace(tzinfo=None),
-                    location=amet_location,
-                    defaults={
-                        'pressure': record['pres'],
-                        'temperature': record['ta'],
-                        'humidity': record['hr']
-                    }
-                )
-            break
-        except Exception:
-            time.sleep(60)
-            attempts += 1
-
-
-@app.task(ignore_result=True)
-def poll_leganes_cm():
-    attempts = 0
-    while attempts < 5:
-        try:
-            leganes_location = Location.get(Location.name == 'leganes')
-            response = requests.get(
-                'http://gestiona.madrid.org/azul_internet/html/web/DatosEstacion24Accion.icm?ESTADO_MENU=2_1',
-                params={
-                    'estaciones': 2,
-                    'aceptar': 'Aceptar'
-                }
-            )
-            soup = BeautifulSoup(response.text, 'html.parser')
-            for table in soup.findAll('table'):
-                if table.find('td', text='Parámetros Meteorológicos'):
-                    for record in table.find('tbody').findAll('tr'):
-                        try:
-                            values = record.findAll('td')
-                            record_time = values[0].text.strip()
-                            record_time = arrow.get(record_time, 'HH:mm', tzinfo='UTC')
-                            now = arrow.utcnow()
-                            day = now if record_time.time() <= now.time() else now.shift(days=-1)
-                            record_time = day.replace(
-                                hour=record_time.hour,
-                                minute=record_time.minute,
-                                second=0,
-                                microsecond=0
-                            ).to('Europe/Madrid').datetime.replace(tzinfo=None)
-                            record_temp, record_hr, record_pre = map(lambda x: float(x.text.strip()), values[3:6])
-                            Record.get_or_create(
-                                date=record_time,
-                                location=leganes_location,
-                                defaults={
-                                    'pressure': record_pre,
-                                    'temperature': record_temp,
-                                    'humidity': record_hr
-                                }
-                            )
-                        except Exception:
-                            continue
-            break
-        except Exception:
-            time.sleep(60)
-            attempts += 1
+app.conf.task_time_limit = 600  # timeout after 10 minutes
 
 
 @app.task(ignore_result=True)
@@ -152,7 +56,7 @@ def poll_leganes_wu():
             response = requests.get(
                 'https://api.weather.com/v2/pws/observations/current',
                 params={
-                    'apiKey': CONFIG['wu_api_key'],
+                    'apiKey': os.environ['WU_API_KEY'],
                     'stationId': 'ILEGAN9',
                     'numericPrecision': 'decimal',
                     'format': 'json',
@@ -172,17 +76,6 @@ def poll_leganes_wu():
         except Exception:
             time.sleep(60)
             attempts += 1
-
-
-@app.task
-def get_battery(mac):
-    poller = MiTempBtPoller(mac, BluepyBackend)
-    for _ in range(100):
-        try:
-            return poller.battery_level()
-        except BluetoothBackendException:
-            continue
-    return 0
 
 
 @app.task(ignore_result=True)
@@ -245,18 +138,13 @@ def send_daily_statistics():
     today = datetime.datetime.today()
     yesterday = today - datetime.timedelta(days=1)
 
-    connection = pika.BlockingConnection(pika.ConnectionParameters(
-        host=CONFIG['rabbitmq-host'],
-        credentials=pika.PlainCredentials(CONFIG['rabbitmq-user'], CONFIG['rabbitmq-password'])
-    ))
-    channel = connection.channel()
-    channel.basic_qos(prefetch_count=1)
-    _send_statistics(channel, yesterday.date(), Statistics.select().where(Statistics.date == yesterday.date()))
+    client = get_mqtt_client()
+    _send_statistics(client, yesterday.date(), Statistics.select().where(Statistics.date == yesterday.date()))
 
     if yesterday.weekday() == 6:
         # Send week summary
         _send_statistics(
-            channel=channel,
+            client=client,
             period=f'WEEK #{yesterday.isocalendar()[1]}',
             statistics=Statistics.select().where(
                 Statistics.date >= yesterday - datetime.timedelta(days=6),
@@ -267,7 +155,7 @@ def send_daily_statistics():
     if yesterday.month != today.month:
         # Send month summary
         _send_statistics(
-            channel=channel,
+            client=client,
             period=calendar.month_name[yesterday.month],
             statistics=Statistics.select().where(
                 Statistics.date >= datetime.date(year=yesterday.year, month=yesterday.month, day=1),
@@ -278,7 +166,7 @@ def send_daily_statistics():
     if yesterday.year != today.year:
         # Send year summary
         _send_statistics(
-            channel=channel,
+            client=client,
             period=yesterday.year,
             statistics=Statistics.select().where(
                 Statistics.date >= datetime.date(year=yesterday.year, month=1, day=1),
@@ -286,10 +174,10 @@ def send_daily_statistics():
             )
         )
 
-    connection.close()
+    client.disconnect()
 
 
-def _send_statistics(channel, period, statistics):
+def _send_statistics(client, period, statistics):
     s_max, s_min, s_min_max, s_max_min = None, None, None, None
     for s in statistics:
         if not s_max or s.temperature_max > s_max.temperature_max:
@@ -314,15 +202,12 @@ def _send_statistics(channel, period, statistics):
 
     message += "</pre>"
 
-    channel.basic_publish(
-        exchange='',
-        routing_key='mijia-notify',
-        properties=pika.BasicProperties(
-            content_type='application/json'
-        ),
-        body=json.dumps({
+    client.publish(
+        topic='mijia/notification',
+        payload={
             'text': message
-        })
+        },
+        qos=2
     )
 
 
@@ -376,23 +261,15 @@ def check_windows_conditions():
     now = datetime.datetime.now()
 
     if close_windows is not None and (not last_decision or (now - last_decision.date) > datetime.timedelta(hours=1)):
-        connection = pika.BlockingConnection(pika.ConnectionParameters(
-            host=CONFIG['rabbitmq-host'],
-            credentials=pika.PlainCredentials(CONFIG['rabbitmq-user'], CONFIG['rabbitmq-password'])
-        ))
-        channel = connection.channel()
-        channel.basic_qos(prefetch_count=1)
-        channel.basic_publish(
-            exchange='',
-            routing_key='mijia-notify',
-            properties=pika.BasicProperties(
-                content_type='application/json'
-            ),
-            body=json.dumps({
+        client = get_mqtt_client()
+        client.publish(
+            topic='mijia/notification',
+            payload={
                 'text': f'<pre>Outdoor temp: {record_outdoors.temperature}ºC\n'
                         f'Indoor temp:  {record_indoors.temperature}ºC</pre>\n'
                         f'===> <b>{"Close" if close_windows else "Open"} the windows</b>'
-            })
+            },
+            qos=2
         )
         WindowsDecision(
             date=now,
