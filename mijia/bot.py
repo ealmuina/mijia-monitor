@@ -16,7 +16,10 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
-WHITELIST = os.environ['TELEGRAM_WHITELIST'].split(',')
+WHITELIST = list(map(
+    int,
+    os.environ['TELEGRAM_WHITELIST'].split(',')
+))
 
 
 def _send_notification(client, userdata, message):
