@@ -1,5 +1,6 @@
 import calendar
 import datetime
+import json
 import os
 import time
 
@@ -204,9 +205,9 @@ def _send_statistics(client, period, statistics):
 
     client.publish(
         topic='mijia/notification',
-        payload={
+        payload=json.dumps({
             'text': message
-        },
+        }),
         qos=2
     )
 
@@ -264,11 +265,11 @@ def check_windows_conditions():
         client = get_mqtt_client()
         client.publish(
             topic='mijia/notification',
-            payload={
+            payload=json.dumps({
                 'text': f'<pre>Outdoor temp: {record_outdoors.temperature}ºC\n'
                         f'Indoor temp:  {record_indoors.temperature}ºC</pre>\n'
                         f'===> <b>{"Close" if close_windows else "Open"} the windows</b>'
-            },
+            }),
             qos=2
         )
         WindowsDecision(
