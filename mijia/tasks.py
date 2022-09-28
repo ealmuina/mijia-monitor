@@ -142,7 +142,7 @@ def send_daily_statistics():
     yesterday = today - datetime.timedelta(days=1)
 
     client = get_mqtt_client()
-    _send_statistics(client, yesterday.date(), Statistics.select().where(Statistics.date == yesterday.date()))
+    _send_statistics(client, yesterday.date(), Statistics.select().where(Statistics.date == yesterday))
 
     if yesterday.weekday() == 6:
         # Send week summary
