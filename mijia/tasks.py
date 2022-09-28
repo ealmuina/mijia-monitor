@@ -21,6 +21,8 @@ except AttributeError:
     # no pyopenssl support used / needed / available
     pass
 
+TIMEZONE = 'Europe/Madrid'
+
 app = Celery(
     'tasks',
     broker='redis://mijia-redis:6379/0',
@@ -44,7 +46,7 @@ app.conf.beat_schedule = {
         'schedule': crontab(minute='*/5')
     }
 }
-app.conf.timezone = 'Europe/Madrid'
+app.conf.timezone = TIMEZONE
 app.conf.task_time_limit = 600  # timeout after 10 minutes
 
 
@@ -66,7 +68,7 @@ def poll_leganes_wu():
             )
             data = response.json().get('observations')[0]
             Record.get_or_create(
-                date=arrow.get(data['epoch']).to('Europe/Madrid').datetime.replace(tzinfo=None),
+                date=arrow.get(data['epoch']).to(TIMEZONE).datetime.replace(tzinfo=None),
                 location=leganes_location,
                 defaults={
                     'temperature': data['metric']['temp'],
@@ -136,7 +138,7 @@ def generate_statistics():
 
 
 def send_daily_statistics():
-    today = datetime.datetime.today()
+    today = arrow.now(TIMEZONE).date()
     yesterday = today - datetime.timedelta(days=1)
 
     client = get_mqtt_client()
