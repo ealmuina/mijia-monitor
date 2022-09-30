@@ -92,7 +92,7 @@ def generate_statistics():
 
     start = record_qs.order_by(Record.date).first().date
     start = start.replace(hour=0, minute=0, second=0, microsecond=0)
-    yesterday = datetime.datetime.today() - datetime.timedelta(days=1)
+    yesterday = arrow.now(TIMEZONE).date() - datetime.timedelta(days=1)
     date_range = list(rrule(DAILY, dtstart=start, until=yesterday))
 
     for d in tqdm.tqdm(date_range):
