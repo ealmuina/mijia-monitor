@@ -65,13 +65,13 @@ jobs:
             echo WU_API_KEY=${{ secrets.WU_API_KEY }} >> secrets.env
             
             # Create k8s secrets
-            k delete secret mijia-secrets
-            k create secret generic mijia-secrets --from-env-file=secrets.env
+            kubectl delete secret mijia-secrets
+            kubectl create secret generic mijia-secrets --from-env-file=secrets.env
             
             # Build containers
             for file in manifests/*; do
-              k apply -f $file
+              kubectl apply -f $file
             done
             
             # Delete old pods
-            k delete replicaset -l app=mijia
+            kubectl delete replicaset -l app=mijia
