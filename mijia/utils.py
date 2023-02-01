@@ -12,6 +12,7 @@ def get_mqtt_client():
     )
     client.connect(
         host=os.environ['MQTT_BROKER_HOST'],
-        port=int(os.environ['MQTT_BROKER_PORT'])
+        port=int(os.environ['MQTT_BROKER_PORT']),
+        keepalive=10,
     )
     return client
