@@ -11,11 +11,6 @@ import mijia.graphics as graphics
 from mijia.models import Location
 from mijia.utils import get_mqtt_client
 
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
-
-logger = logging.getLogger(__name__)
-
 WHITELIST = list(map(
     int,
     os.environ['TELEGRAM_WHITELIST'].split(',')
@@ -26,28 +21,29 @@ def _send_notification(client, userdata, message):
     payload = json.loads(message.payload)
     try:
         for user_id in WHITELIST:
-            logger.info('Sending notification to %d', user_id)
+            logging.info('Sending notification to %d', user_id)
             BOT.send_message(
                 chat_id=user_id,
                 text=payload['text'],
                 parse_mode=telegram.ParseMode.HTML
             )
     except Exception as e:
-        logger.error(e)
+        logging.error(e)
 
 
 def listen_notifications():
     # Setup MQTT client
     client = get_mqtt_client()
-    client.on_message = _send_notification
-    client.subscribe('mijia/notification', qos=2)
+    logging.info('Notifications listener started')
 
-    try:
-        client.loop_forever()
-    except Exception as e:
-        logger.error(e)
-
-    client.disconnect()
+    while True:
+        client.on_message = _send_notification
+        client.subscribe('mijia/notification', qos=2)
+        try:
+            client.loop_forever()
+        except Exception as e:
+            logging.error(e)
+            client.reconnect()
 
 
 def authenticate(func):
@@ -125,7 +121,7 @@ def humidity(update, context):
 
 def error(update, context):
     """Log Errors caused by Updates."""
-    logger.warning('Update "%s" caused error "%s"', update, context.error)
+    logging.warning('Update "%s" caused error "%s"', update, context.error)
 
 
 def main():
