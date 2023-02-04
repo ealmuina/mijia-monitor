@@ -20,11 +20,9 @@ def on_message(client, userdata, message):
             # Create record
             epoch = payload.get('epoch')
             if epoch:
-                logging.info(epoch)
-                now = arrow.get(epoch).to(tasks.TIMEZONE),
+                now = arrow.get(epoch).to(tasks.TIMEZONE)
             else:
                 now = arrow.now('Europe/Madrid')
-            logging.info(now)
             Record.create(
                 temperature=payload['temperature'],
                 humidity=payload['humidity'],
