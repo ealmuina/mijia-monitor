@@ -60,20 +60,23 @@ def poll_leganes_wu():
                 'https://api.weather.com/v2/pws/observations/current',
                 params={
                     'apiKey': os.environ['WU_API_KEY'],
-                    'stationId': 'ILEGAN9',
+                    'stationId': 'ILEGAN23',
                     'numericPrecision': 'decimal',
                     'format': 'json',
                     'units': 'm'
                 }
             )
             data = response.json().get('observations')[0]
-            Record.get_or_create(
-                date=arrow.get(data['epoch']).to(TIMEZONE).datetime.replace(tzinfo=None),
-                location=leganes_location,
-                defaults={
+            client = get_mqtt_client()
+            client.publish(
+                topic='mijia/record',
+                payload=json.dumps({
+                    'node_id': leganes_location.node_id,
+                    'epoch': data['epoch'],
                     'temperature': data['metric']['temp'],
-                    'humidity': data['humidity']
-                }
+                    'humidity': data['humidity'],
+                }),
+                qos=2
             )
             break
         except Exception:
