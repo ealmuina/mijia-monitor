@@ -34,17 +34,20 @@ def _send_notification(client, userdata, message):
 def listen_notifications():
     # Setup MQTT client
     client = get_mqtt_client()
+    client.on_message = _send_notification
+    result, mid = client.subscribe('mijia/notification', qos=2)
+    logging.info(f'Subscribe attempt: result={result}, mid={mid}')
+
     logging.info('Notifications listener started')
 
     while True:
-        client.on_message = _send_notification
-        result, mid = client.subscribe('mijia/notification', qos=2)
-        logging.info(f'Subscribe attempt: result={result}, mid={mid}')
         try:
             client.loop()
         except Exception as e:
             logging.error(e)
             client.reconnect()
+            result, mid = client.subscribe('mijia/notification', qos=2)
+            logging.info(f'Subscribe attempt: result={result}, mid={mid}')
 
 
 def authenticate(func):

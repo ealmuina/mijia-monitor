@@ -35,17 +35,20 @@ def on_message(client, userdata, message):
 
 def main():
     client = get_mqtt_client()
+    client.on_message = on_message
+    result, mid = client.subscribe('mijia/record')
+    logging.info(f'Subscribe attempt: result={result}, mid={mid}')
+
     logging.info('Monitor started')
 
     while True:
-        client.on_message = on_message
-        result, mid = client.subscribe('mijia/record')
-        logging.info(f'Subscribe attempt: result={result}, mid={mid}')
         try:
             client.loop()
         except Exception as e:
             logging.error(e)
             client.reconnect()
+            result, mid = client.subscribe('mijia/record')
+            logging.info(f'Subscribe attempt: result={result}, mid={mid}')
 
 
 if __name__ == '__main__':
