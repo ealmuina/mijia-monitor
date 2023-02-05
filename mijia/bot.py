@@ -42,7 +42,7 @@ def listen_notifications():
 
     while True:
         try:
-            client.loop()
+            client.loop_forever()
         except Exception as e:
             logging.error(e)
             client.reconnect()
