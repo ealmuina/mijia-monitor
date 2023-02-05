@@ -40,7 +40,7 @@ def listen_notifications():
         client.on_message = _send_notification
         client.subscribe('mijia/notification', qos=2)
         try:
-            client.loop_forever()
+            client.loop()
         except Exception as e:
             logging.error(e)
             client.reconnect()

@@ -41,7 +41,7 @@ def main():
         client.on_message = on_message
         client.subscribe('mijia/record')
         try:
-            client.loop_forever()
+            client.loop()
         except Exception as e:
             logging.error(e)
             client.reconnect()
