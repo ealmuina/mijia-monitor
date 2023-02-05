@@ -39,7 +39,8 @@ def main():
 
     while True:
         client.on_message = on_message
-        client.subscribe('mijia/record')
+        result, mid = client.subscribe('mijia/record')
+        logging.info(f'Subscribe attempt: result={result}, mid={mid}')
         try:
             client.loop()
         except Exception as e:

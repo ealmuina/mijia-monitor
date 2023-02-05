@@ -38,7 +38,8 @@ def listen_notifications():
 
     while True:
         client.on_message = _send_notification
-        client.subscribe('mijia/notification', qos=2)
+        result, mid = client.subscribe('mijia/notification', qos=2)
+        logging.info(f'Subscribe attempt: result={result}, mid={mid}')
         try:
             client.loop()
         except Exception as e:
