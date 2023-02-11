@@ -8,7 +8,11 @@ from mijia.models import Record, Location
 from mijia.utils import get_mqtt_client
 
 
-def on_message(client, userdata, message):
+def _subscribe_to_records(client, userdata, flags, rc):
+    client.subscribe('mijia/record')
+
+
+def _on_message(client, userdata, message):
     logging.info('Received message: %s', message.payload.decode('utf-8'))
     payload = json.loads(message.payload)
 
@@ -34,12 +38,11 @@ def on_message(client, userdata, message):
 
 
 def main():
-    client = get_mqtt_client()
-    client.on_message = on_message
-    client.subscribe('mijia/record')
-
+    client = get_mqtt_client(
+        on_connect=_subscribe_to_records,
+        on_message=_on_message,
+    )
     logging.info('Monitor started')
-
     client.loop_forever()
 
 

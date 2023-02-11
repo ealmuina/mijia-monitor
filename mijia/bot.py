@@ -17,6 +17,10 @@ WHITELIST = list(map(
 ))
 
 
+def _subscribe_to_notifications(client, userdata, flags, rc):
+    client.subscribe('mijia/notification', qos=2)
+
+
 def _send_notification(client, userdata, message):
     payload = json.loads(message.payload)
     try:
@@ -33,12 +37,11 @@ def _send_notification(client, userdata, message):
 
 def listen_notifications():
     # Setup MQTT client
-    client = get_mqtt_client()
-    client.on_message = _send_notification
-    client.subscribe('mijia/notification', qos=2)
-
+    client = get_mqtt_client(
+        on_connect=_subscribe_to_notifications,
+        on_message=_send_notification,
+    )
     logging.info('Notifications listener started')
-
     client.loop_forever()
 
 
