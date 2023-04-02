@@ -6,7 +6,7 @@ services:
       context: .
     volumes:
       - .:/app
-    command: python -u -m mijia.bot
+    command: python -u -m bot.runner
   monitor:
     env_file:
       - secrets.env

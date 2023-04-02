@@ -1,9 +1,11 @@
+import calendar
 import datetime
 import pickle
 
 import matplotlib.pyplot as plt
+from peewee import fn
 
-from mijia.models import Record
+from mijia.models import Record, Statistics
 
 cm = plt.cm.get_cmap('tab20c')
 
@@ -67,3 +69,42 @@ def multiple_plot(timespan, locations, temperature=True, humidity=True):
     plt.minorticks_on()
     plt.grid(b=True, which='minor', color='#999999', linestyle='-', alpha=0.2)
     plt.savefig('plot.png')
+
+
+def plot_monthly_means():
+    now = datetime.datetime.now()
+    fig, ax = plt.subplots(2, 1, figsize=(7.2, 12.8))
+    months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+
+    for y in range(2021, now.year + 1):
+        top_month = 12 if y != now.year else now.month
+        min_temps, max_temps = [], []
+
+        for m in range(1, top_month + 1):
+            _, last_day = calendar.monthrange(y, m)
+            t_min, t_max = Statistics.select(
+                fn.Avg(Statistics.temperature_min),
+                fn.Avg(Statistics.temperature_max)
+            ).where(
+                Statistics.date >= datetime.date(year=y, month=m, day=1),
+                Statistics.date <= datetime.date(year=y, month=m, day=last_day)
+            ).scalar(as_tuple=True)
+            min_temps.append(t_min)
+            max_temps.append(t_max)
+
+        ax[0].plot(months[:len(max_temps)], max_temps, label=str(y), marker=".")
+        ax[1].plot(months[:len(min_temps)], min_temps, label=str(y), marker=".")
+
+    for i in range(2):
+        ax[i].grid(b=True, which='major', color='#666666', linestyle='-')
+        ax[i].minorticks_on()
+        ax[i].grid(b=True, which='minor', color='#999999', linestyle='-', alpha=0.2)
+        ax[i].set_ylabel('ºC')
+
+    ax[0].set_title('T. max')
+    ax[1].set_title('T. min')
+
+    handles, labels = ax[0].get_legend_handles_labels()
+    fig.suptitle('Monthly mean T. Leganés', fontsize=20)
+    fig.legend(handles, labels)
+    fig.savefig("plot.png")
