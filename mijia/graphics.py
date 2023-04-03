@@ -24,7 +24,7 @@ def make_plt(start, location, temperature, humidity, single=True, i=0, historica
 
     if temperature:
         if historical_lines:
-            with open('/app/utils/mean_temps.bin', 'rb') as file:
+            with open('/app/utils/daily_mean_temps.bin', 'rb') as file:
                 mean_temps = pickle.load(file)
             tmax, tmin = [], []
             for time in times:
@@ -76,6 +76,16 @@ def plot_monthly_means():
     fig, ax = plt.subplots(2, 1, figsize=(7.2, 12.8))
     months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
+    with open('/app/utils/monthly_mean_temps.bin', 'rb') as file:
+        mean_temps = pickle.load(file)
+
+    mean_tmax = [t[0] for t in mean_temps.values()]
+    mean_tmin = [t[1] for t in mean_temps.values()]
+
+    # Historical values
+    ax[0].plot(mean_tmax, label='1975-2019', color='Red', marker="o", linestyle="--")
+    ax[1].plot(mean_tmin, label='1975-2019', color='Blue', marker="o", linestyle="--")
+
     for y in range(2021, now.year + 1):
         top_month = 12 if y != now.year else now.month
         min_temps, max_temps = [], []
@@ -92,6 +102,7 @@ def plot_monthly_means():
             min_temps.append(t_min)
             max_temps.append(t_max)
 
+        # Year values
         ax[0].plot(months[:len(max_temps)], max_temps, label=str(y), marker=".")
         ax[1].plot(months[:len(min_temps)], min_temps, label=str(y), marker=".")
 
