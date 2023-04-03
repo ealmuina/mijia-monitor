@@ -58,13 +58,15 @@ async def plot(update, context):
 async def historical(update, context):
     context.chat_data["type"] = ChartType.HISTORICAL
     await update.message.reply_text("Generating chart...")
-    return await _make_chart(update, context)
+    await _make_chart(update, context)
+    return ConversationHandler.END
 
 
 async def period(update, context):
     context.chat_data['period'] = Period(update.message.text)
     await update.message.reply_text("Generating chart...", reply_markup=ReplyKeyboardRemove())
-    return await _make_chart(update, context)
+    await _make_chart(update, context)
+    return ConversationHandler.END
 
 
 async def cancel(update, context):
