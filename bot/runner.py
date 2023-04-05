@@ -1,3 +1,4 @@
+import asyncio
 import os
 
 from telegram.ext import Application, ConversationHandler, CommandHandler, MessageHandler, filters
@@ -5,6 +6,15 @@ from telegram.ext import Application, ConversationHandler, CommandHandler, Messa
 from bot import handlers
 from bot.handlers import PERIOD
 from bot.listener import Listener
+
+
+async def run(application):
+    await application.initialize()
+    await application.updater.start_polling()
+    await application.start()
+
+    listener = Listener(application.bot)
+    await listener.run()
 
 
 def main():
@@ -38,13 +48,9 @@ def main():
         )
     )
     application.add_handler(CommandHandler('historical', handlers.historical))
-
     application.add_error_handler(handlers.error)
 
-    listener = Listener(application.bot)
-    listener.start()
-
-    application.run_polling()
+    asyncio.run(run(application))
 
 
 if __name__ == '__main__':
