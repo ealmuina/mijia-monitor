@@ -271,8 +271,8 @@ def check_windows_conditions():
         client.publish(
             topic='mijia/notification',
             payload=json.dumps({
-                'text': f'<pre>Outdoor temp: {record_outdoors.temperature}ºC\n'
-                        f'Indoor temp:  {record_indoors.temperature}ºC</pre>\n'
+                'text': f'<pre>Outdoor temp: {round(record_outdoors.temperature, 1)}ºC\n'
+                        f'Indoor temp:  {round(record_indoors.temperature, 1)}ºC</pre>\n'
                         f'===> <b>{"Close" if close_windows else "Open"} the windows</b>'
             }),
             qos=2
