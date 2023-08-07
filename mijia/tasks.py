@@ -60,7 +60,7 @@ def poll_leganes_wu():
                 'https://api.weather.com/v2/pws/observations/current',
                 params={
                     'apiKey': os.environ['WU_API_KEY'],
-                    'stationId': 'ILEGAN9',
+                    'stationId': 'IMADRIDM51',
                     'numericPrecision': 'decimal',
                     'format': 'json',
                     'units': 'm'
