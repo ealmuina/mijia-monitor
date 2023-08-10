@@ -218,7 +218,7 @@ def _send_statistics(client, period, statistics):
 
 
 def get_last_record_for_location(location, delay_minutes=0):
-    last_date = datetime.datetime.now() - datetime.timedelta(minutes=delay_minutes)
+    last_date = arrow.now(TIMEZONE).datetime - datetime.timedelta(minutes=delay_minutes)
 
     return Record.select().where(
         Record.location == location,
