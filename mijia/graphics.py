@@ -2,6 +2,7 @@ import calendar
 import datetime
 import pickle
 
+import arrow
 import matplotlib.pyplot as plt
 from peewee import fn
 
@@ -41,7 +42,7 @@ def make_plt(start, location, temperature, humidity, single=True, i=0, historica
 def single_plot(timespan, location, temperature=True, humidity=True):
     plt.figure(figsize=(11, 5.5))
 
-    start = datetime.datetime.now() - timespan
+    start = arrow.now('Europe/Madrid').datetime - timespan
     make_plt(start, location, temperature, humidity, historical_lines=location.outdoor)
 
     plt.title(location.name)
@@ -56,7 +57,7 @@ def multiple_plot(timespan, locations, temperature=True, humidity=True):
     historical_lines = False
     plt.figure(figsize=(11, 5.5))
 
-    start = datetime.datetime.now() - timespan
+    start = arrow.now('Europe/Madrid').datetime - timespan
     for i, location in enumerate(locations):
         if location.outdoor and not historical_lines:
             make_plt(start, location, temperature, humidity, False, i, True)
@@ -72,7 +73,7 @@ def multiple_plot(timespan, locations, temperature=True, humidity=True):
 
 
 def plot_monthly_means():
-    now = datetime.datetime.now()
+    now = arrow.now('Europe/Madrid').datetime
     fig, ax = plt.subplots(2, 1, figsize=(7.2, 12.8))
     months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
