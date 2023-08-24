@@ -43,6 +43,10 @@ class WindowsDecision(Model):
     class Meta:
         database = db
 
+    @property
+    def open(self):
+        return not self.close
+
 
 for table in (Location, Record, Statistics, WindowsDecision):
     table.create_table()

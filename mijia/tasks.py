@@ -36,8 +36,8 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour=0, minute=5)
     },
     # Executes every minute.
-    'poll-leganes': {
-        'task': 'mijia.tasks.poll_leganes_wu',
+    'poll-madrid': {
+        'task': 'mijia.tasks.poll_madrid_wu',
         'schedule': crontab(minute='*')
     },
     # Executes every 5 minutes.
@@ -51,11 +51,11 @@ app.conf.task_time_limit = 600  # timeout after 10 minutes
 
 
 @app.task(ignore_result=True)
-def poll_leganes_wu():
+def poll_madrid_wu():
     attempts = 0
     while attempts < 5:
         try:
-            leganes_location = Location.get(Location.name == 'leganes')
+            madrid_location = Location.get(Location.name == 'madrid')
             response = requests.get(
                 'https://api.weather.com/v2/pws/observations/current',
                 params={
@@ -71,7 +71,7 @@ def poll_leganes_wu():
             client.publish(
                 topic='mijia/record',
                 payload=json.dumps({
-                    'node_id': leganes_location.node_id,
+                    'node_id': madrid_location.node_id,
                     'epoch': data['epoch'],
                     'temperature': data['metric']['temp'],
                     'humidity': data['humidity'],
@@ -125,7 +125,10 @@ def generate_statistics():
                 if not record_min or location_record_min.temperature < record_min.temperature:
                     record_min = location_record_min
 
-                temperature_avg = min(temperature_avg, (sum(map(lambda record: record.temperature, records)) / len(records)))
+                temperature_avg = min(
+                    temperature_avg,
+                    (sum(map(lambda record: record.temperature, records)) / len(records))
+                )
 
             if record_max and record_min:
                 Statistics(
@@ -230,14 +233,14 @@ def get_last_record_for_location(location, delay_minutes=0):
 
 @app.task(ignore_result=True)
 def check_windows_conditions():
-    indoors = Location.select().where(Location.outdoor == False).first()
+    indoors = Location.select().where(Location.outdoor == False)
     local_outdoors = Location.select().where(
         Location.outdoor == True,
         Location.hidden == False,
         Location.remote == True
     ).first()
 
-    record_indoors = get_last_record_for_location(indoors)
+    records_indoors = [get_last_record_for_location(x) for x in indoors]
     record_outdoors = get_last_record_for_location(local_outdoors)
     record_30_min_ago_outdoors = get_last_record_for_location(local_outdoors, 30)
 
@@ -245,24 +248,29 @@ def check_windows_conditions():
 
     delta_degrees = 0.5
     close_windows = None
+    record_indoors = None
 
-    if (not last_decision or not last_decision.close) and \
-            record_30_min_ago_outdoors.temperature - record_outdoors.temperature < -delta_degrees and \
-            record_indoors.temperature - record_outdoors.temperature < -delta_degrees \
-            and record_indoors.temperature > 23:
+    if (not last_decision or last_decision.open) and \
+            record_30_min_ago_outdoors.temperature - record_outdoors.temperature < -delta_degrees:
         # Temperature outdoors is growing
-        # Now temperature is lower indoors than outdoors by more than delta_degrees degrees
-        # Send notification to close windows
-        close_windows = True
+        # Compare with the lowest temperature indoors
+        record_indoors = sorted(records_indoors, key=lambda r: r.temperature)[0]
+        if record_indoors.temperature - record_outdoors.temperature < -delta_degrees \
+                and record_indoors.temperature > 23:
+            # Now temperature is lower indoors than outdoors by more than delta_degrees degrees
+            # Send notification to close windows
+            close_windows = True
 
     if (not last_decision or last_decision.close) and \
-            record_30_min_ago_outdoors.temperature - record_outdoors.temperature > delta_degrees and \
-            record_outdoors.temperature - record_indoors.temperature < -delta_degrees and \
-            record_indoors.temperature > 25:
+            record_30_min_ago_outdoors.temperature - record_outdoors.temperature > delta_degrees:
         # Temperature is lowering
-        # Now temperature is lower outdoors than indoors by more than delta_degrees degrees
-        # Send notification to open windows
-        close_windows = False
+        # Compare with the highest temperature indoors
+        record_indoors = sorted(records_indoors, key=lambda r: r.temperature)[-1]
+        if record_outdoors.temperature - record_indoors.temperature < -delta_degrees and \
+                record_indoors.temperature > 25:
+            # Now temperature is lower outdoors than indoors by more than delta_degrees degrees
+            # Send notification to open windows
+            close_windows = False
 
     now = datetime.datetime.now()
 
