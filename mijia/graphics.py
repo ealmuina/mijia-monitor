@@ -54,6 +54,9 @@ def single_plot(timespan, location, temperature=True, humidity=True):
 
 
 def multiple_plot(timespan, locations, temperature=True, humidity=True):
+    # Order locations to put outdoors first and then indoors
+    locations = [loc for loc in locations if loc.outdoor] + [loc for loc in locations if not loc.outdoor]
+
     historical_lines = False
     plt.figure(figsize=(11, 5.5))
 
