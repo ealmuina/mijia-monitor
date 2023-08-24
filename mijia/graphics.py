@@ -59,13 +59,17 @@ def multiple_plot(timespan, locations, temperature=True, humidity=True):
 
     start = arrow.now('Europe/Madrid').datetime - timespan
     for i, location in enumerate(locations):
-        if location.outdoor and not historical_lines:
-            make_plt(start, location, temperature, humidity, False, i, True)
-            historical_lines = True
-        else:
-            make_plt(start, location, temperature, humidity, False, i, False)
+        historical_lines = historical_lines or location.outdoor
+        make_plt(
+            start,
+            location,
+            temperature,
+            humidity,
+            False,
+            i,
+            historical_lines=historical_lines and i == len(locations) - 1,
+        )
 
-    plt.legend()
     plt.grid(b=True, which='major', color='#666666', linestyle='-')
     plt.minorticks_on()
     plt.grid(b=True, which='minor', color='#999999', linestyle='-', alpha=0.2)
@@ -117,6 +121,6 @@ def plot_monthly_means():
     ax[1].set_title('T. min')
 
     handles, labels = ax[0].get_legend_handles_labels()
-    fig.suptitle('Monthly mean T. Leganés', fontsize=20)
+    fig.suptitle('Monthly mean T. Madrid', fontsize=20)
     fig.legend(handles, labels)
     fig.savefig("plot.png")
