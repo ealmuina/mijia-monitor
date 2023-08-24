@@ -70,11 +70,7 @@ def multiple_plot(timespan, locations, temperature=True, humidity=True):
             historical_lines=historical_lines and i == len(locations) - 1,
         )
 
-    handles, labels = plt.get_legend_handles_labels()
-    # sort both labels and handles by labels
-    labels, handles = zip(*sorted(zip(labels, handles), key=lambda t: t[0]))
-    plt.legend(handles, labels)
-
+    plt.legend()
     plt.grid(b=True, which='major', color='#666666', linestyle='-')
     plt.minorticks_on()
     plt.grid(b=True, which='minor', color='#999999', linestyle='-', alpha=0.2)

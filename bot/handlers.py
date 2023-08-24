@@ -28,7 +28,7 @@ async def _make_chart(update, context):
         timespan = Period(context.chat_data["period"])
         graphics.multiple_plot(
             timespan.timedelta,
-            Location.select().where(Location.hidden == False),
+            Location.select().where(Location.hidden == False).order_by(Location.outdoor.desc()),
             temperature=chart_type.is_temperature,
             humidity=chart_type.is_humidity,
         )
