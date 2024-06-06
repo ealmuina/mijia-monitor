@@ -233,11 +233,14 @@ def get_last_record_for_location(location, delay_minutes=0):
 
 @app.task(ignore_result=True)
 def check_windows_conditions():
-    indoors = Location.select().where(Location.outdoor == False)
+    indoors = Location.select().where(
+        Location.outdoor == False,
+        Location.hidden == False,
+    )
     local_outdoors = Location.select().where(
         Location.outdoor == True,
         Location.hidden == False,
-        Location.remote == True
+        Location.remote == True,
     ).first()
 
     records_indoors = [get_last_record_for_location(x) for x in indoors]
